@@ -108,7 +108,7 @@ class DecoderRNNV1(RNNCell):
 
 class DecoderV1(tf.layers.Layer):
 
-    def __init__(self, is_training, prenet_out_units=(256, 128), drop_rate=0.5,
+    def __init__(self, prenet_out_units=(256, 128), drop_rate=0.5,
                  attention_out_units=256,
                  decoder_out_units=256,
                  num_mels=80,
@@ -116,30 +116,34 @@ class DecoderV1(tf.layers.Layer):
                  max_iters=200,
                  trainable=True, name=None, **kwargs):
         super(DecoderV1, self).__init__(name=name, trainable=trainable, **kwargs)
-        self.is_training = is_training
+        self._prenet_out_units = prenet_out_units
+        self._drop_rate = drop_rate
         self.attention_out_units = attention_out_units
         self.decoder_out_units = decoder_out_units
         self.num_mels = num_mels
         self.output_per_step = output_per_step
         self.max_iters = max_iters
-        self.prenets = tuple([PreNet(out_unit, is_training, drop_rate)
-                              for out_unit in prenet_out_units])
 
     def build(self, _):
         self.built = True
 
-    def call(self, source, memory_sequence_length=None, target=None):
+    def call(self, source, is_training=None, memory_sequence_length=None, target=None):
+        assert is_training is not None
+
+        prenets = tuple([PreNet(out_unit, is_training, self._drop_rate)
+                         for out_unit in self._prenet_out_units])
+
         batch_size = tf.shape(source)[0]
-        attention_cell = AttentionRNNV1(self.attention_out_units, self.prenets, source, memory_sequence_length)
+        attention_cell = AttentionRNNV1(self.attention_out_units, prenets, source, memory_sequence_length)
         decoder_cell = DecoderRNNV1(self.decoder_out_units, attention_cell)
         output_cell = OutputProjectionWrapper(decoder_cell, self.num_mels * self.output_per_step)
 
         decoder_initial_state = output_cell.zero_state(batch_size, dtype=tf.float32)
 
         helper = TrainingHelper(target, self.num_mels,
-                                self.output_per_step) if self.is_training else InferenceHelper(batch_size,
-                                                                                               self.num_mels,
-                                                                                               self.output_per_step)
+                                self.output_per_step) if is_training else InferenceHelper(batch_size,
+                                                                                          self.num_mels,
+                                                                                          self.output_per_step)
         (decoder_outputs, _), final_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
             BasicDecoder(output_cell, helper, decoder_initial_state), maximum_iterations=self.max_iters)
 
