@@ -15,7 +15,7 @@ def load_wav(path):
     return librosa.core.load(path, sr=hparams.sample_rate)[0]
 
 
-def spectrogram(v):
+def spectrogram(y):
     D = _stft(y)
     S = _amp_to_db(np.abs(D)) - hparams.ref_level_db
     return _normalize(S)

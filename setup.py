@@ -17,6 +17,7 @@ setup(name='tacotron2',
               "pylint",
           ],
           "train": [
+              "pyspark",
               "librosa",
               "docopt",
               "matplotlib",
