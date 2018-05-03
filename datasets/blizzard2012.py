@@ -4,6 +4,7 @@ import os
 from collections import namedtuple
 from util import audio, tfrecord
 from hparams import hparams
+from datasets.corpus import Corpus
 
 
 class TextAndPath(namedtuple("TextAndPath", ["id", "wav_path", "labels_path", "text"])):
@@ -13,7 +14,7 @@ class TextAndPath(namedtuple("TextAndPath", ["id", "wav_path", "labels_path", "t
 _eos = 1
 
 
-class Blizzard2012:
+class Blizzard2012(Corpus):
 
     def __init__(self, in_dir, out_dir):
         self.in_dir = in_dir
@@ -27,6 +28,26 @@ class Blizzard2012:
         self._max_out_length = 700
         self._end_buffer = 0.05
         self._min_confidence = 90
+
+    @property
+    def training_source_files(self):
+        return [os.path.join(self.out_dir, f"blizzard2012-source-{record_id:05d}.tfrecord") for record_id in
+                range(33, 321)]
+
+    @property
+    def training_target_files(self):
+        return [os.path.join(self.out_dir, f"blizzard2012-target-{record_id:05d}.tfrecord") for record_id in
+                range(33, 321)]
+
+    @property
+    def test_source_files(self):
+        return [os.path.join(self.out_dir, f"blizzard2012-source-{record_id:05d}.tfrecord") for record_id in
+                range(1, 33)]
+
+    @property
+    def test_target_files(self):
+        return [os.path.join(self.out_dir, f"blizzard2012-target-{record_id:05d}.tfrecord") for record_id in
+                range(1, 33)]
 
     def text_and_path_rdd(self, sc: SparkContext):
         return sc.parallelize(self._extract_all_text_and_path())
@@ -87,14 +108,14 @@ class Blizzard2012:
         spectrogram = audio.spectrogram(wav).astype(np.float32)
         n_frames = spectrogram.shape[1]
         mel_spectrogram = audio.melspectrogram(wav).astype(np.float32)
-        filename = f"blizzard2012-target-{paths.id:05d}.tfrecord".format(paths.id)
+        filename = f"blizzard2012-target-{paths.id:05d}.tfrecord"
         filepath = os.path.join(self.out_dir, filename)
         tfrecord.write_preprocessed_target_data(paths.id, spectrogram.T, mel_spectrogram.T, filepath)
         return filename, n_frames
 
     def _process_source(self, paths: TextAndPath):
         sequence = self._text_to_sequence(paths.text)
-        filename = f"blizzard2012-source-{paths.id:05d}.tfrecord".format(paths.id)
+        filename = f"blizzard2012-source-{paths.id:05d}.tfrecord"
         filepath = os.path.join(self.out_dir, filename)
         tfrecord.write_preprocessed_source_data2(paths.id, paths.text, sequence, paths.text, sequence, filepath)
 

@@ -102,3 +102,6 @@ ENV/
 
 # PyCharm
 .idea
+
+# dataset
+blizzard2012-out
