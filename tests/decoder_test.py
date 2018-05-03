@@ -38,7 +38,7 @@ class DecoderTest(tf.test.TestCase):
         max_iters = 10
 
         decoder = DecoderV1(drop_rate=0.0, max_iters=max_iters, num_mels=num_mels,
-                            output_per_step=r)
+                            outputs_per_step=r)
 
         output_inference, state_inference = decoder(memory, is_training=False, memory_sequence_length=source_length)
 

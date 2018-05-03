@@ -3,6 +3,26 @@ from tensorflow.contrib.rnn import GRUCell
 from functools import reduce
 
 
+class Embedding(tf.layers.Layer):
+
+    def __init__(self, num_symbols, embedding_dim,
+                 trainable=True, name=None, **kwargs):
+        super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
+        self._num_symbols = num_symbols
+        self._embedding_dim = embedding_dim
+
+    def build(self, _):
+        self._embedding = self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim],
+                                            dtype=tf.float32)
+        self.built = True
+
+    def call(self, inputs, **kwargs):
+        return tf.nn.embedding_lookup(self._embedding, inputs)
+
+    def compute_output_shape(self, input_shape):
+        return tf.TensorShape([input_shape[0], input_shape[1], self._embedding_dim])
+
+
 class PreNet(tf.layers.Layer):
 
     def __init__(self, out_units, is_training, drop_rate=0.5,
@@ -12,11 +32,6 @@ class PreNet(tf.layers.Layer):
         self.drop_rate = drop_rate
         self.is_training = is_training
         self.dense = tf.layers.Dense(out_units, activation=tf.nn.relu)
-
-    def clone(self, out_units=None, is_training=None, drop_rate=None):
-        return PreNet(out_units or self.out_units,
-                      is_training or self.is_training,
-                      drop_rate or self.drop_rate)
 
     def build(self, _):
         self.built = True
@@ -93,7 +108,11 @@ class CBHG(tf.layers.Layer):
         self.out_units = out_units
 
         self.convolution_banks = [
-            Conv1d(kernel_size, conv_channels, activation=tf.nn.relu, name=f"conv1d_K{kernel_size}")
+            Conv1d(kernel_size,
+                   conv_channels,
+                   activation=tf.nn.relu,
+                   is_training=is_training,
+                   name=f"conv1d_K{kernel_size}")
             for kernel_size in range(1, max_filter_width + 1)]
         self.maxpool = tf.layers.MaxPooling1D(pool_size=2, strides=1, padding="SAME")
 
@@ -105,6 +124,7 @@ class CBHG(tf.layers.Layer):
 
         self.projection2 = Conv1d(kernel_size=3,
                                   out_channels=projection2_out_channels,
+                                  activation=tf.identity,
                                   is_training=is_training,
                                   name="proj2")
 

@@ -2,6 +2,7 @@
 """
 Preprocess dataset
 usage: preprocess.py <name> <in_dir> <out_dir>
+
 """
 
 from docopt import docopt
