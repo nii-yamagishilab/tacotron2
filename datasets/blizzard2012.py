@@ -67,7 +67,6 @@ class Blizzard2012(Corpus):
                 range(1, 33)]
 
     def text_and_path_rdd(self, sc: SparkContext):
-        num_partition = sc.defaultParallelism
         return sc.parallelize(
             self._extract_all_text_and_path())
 
@@ -83,6 +82,21 @@ class Blizzard2012(Corpus):
                 lambda acc, kv: ("\n".join([acc[0], _source_metadata_to_tsv(kv[1])]), max(acc[1], len(kv[1].text))),
                 iterator, ("", 0))
             filename = f"blizzard2012-source-metadata-{splitIndex:03d}.tsv"
+            filepath = os.path.join(self.out_dir, filename)
+            with open(filepath, mode="w") as f:
+                f.write(csv)
+            yield csv.count("\n") + 1, max_len
+
+        return rdd.sortByKey().mapPartitionsWithIndex(
+            map_fn, preservesPartitioning=True).fold(
+            (0, 0), lambda acc, xy: (acc[0] + xy[0], max(acc[1], xy[1])))
+
+    def aggregate_target_metadata(self, rdd: RDD):
+        def map_fn(splitIndex, iterator):
+            csv, max_len = reduce(
+                lambda acc, kv: ("\n".join([acc[0], _target_metadata_to_tsv(kv[1])]), max(acc[1], kv[1].n_frames)),
+                iterator, ("", 0))
+            filename = f"blizzard2012-target-metadata-{splitIndex:03d}.tsv"
             filepath = os.path.join(self.out_dir, filename)
             with open(filepath, mode="w") as f:
                 f.write(csv)
@@ -136,9 +150,6 @@ class Blizzard2012(Corpus):
         start = int(start_offset * hparams.sample_rate)
         end = int(end_offset * hparams.sample_rate) if end_offset is not None else -1
         wav = wav[start:end]
-        max_samples = self._max_out_length * hparams.frame_shift_ms / 1000 * hparams.sample_rate
-        if len(wav) > max_samples:
-            return None
         spectrogram = audio.spectrogram(wav).astype(np.float32)
         n_frames = spectrogram.shape[1]
         mel_spectrogram = audio.melspectrogram(wav).astype(np.float32)

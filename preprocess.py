@@ -20,10 +20,12 @@ if __name__ == "__main__":
     instance = mod.instantiate(in_dir, out_dir)
 
     sc = SparkContext()
-    instance.process_targets(
-        instance.text_and_path_rdd(sc)).collect()
+    target_metadata = instance.process_targets(
+        instance.text_and_path_rdd(sc))
+    target_num, max_target_len = instance.aggregate_target_metadata(target_metadata)
+    print(f"number of target records: {target_num}, max target length: {max_target_len}")
 
     source_meta = instance.process_sources(
         instance.text_and_path_rdd(sc))
     source_num, max_source_len = instance.aggregate_source_metadata(source_meta)
-    print(f"number of records: {source_num}, max source length: {max_source_len}")
+    print(f"number of source records: {source_num}, max source length: {max_source_len}")
