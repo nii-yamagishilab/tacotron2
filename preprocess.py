@@ -23,5 +23,7 @@ if __name__ == "__main__":
     instance.process_targets(
         instance.text_and_path_rdd(sc)).collect()
 
-    instance.process_sources(
-        instance.text_and_path_rdd(sc)).collect()
+    source_meta = instance.process_sources(
+        instance.text_and_path_rdd(sc))
+    source_num, max_source_len = instance.aggregate_source_metadata(source_meta)
+    print(f"number of records: {source_num}, max source length: {max_source_len}")

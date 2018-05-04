@@ -5,10 +5,27 @@ from collections import namedtuple
 from util import audio, tfrecord
 from hparams import hparams
 from datasets.corpus import Corpus
+from functools import reduce
 
 
 class TextAndPath(namedtuple("TextAndPath", ["id", "wav_path", "labels_path", "text"])):
     pass
+
+
+class SourceMetaData(namedtuple("SourceMetaData", ["id", "filepath", "text"])):
+    pass
+
+
+def _source_metadata_to_tsv(meta):
+    return "\t".join([str(meta.id), meta.filepath, meta.text])
+
+
+class TargetMetaData(namedtuple("TargetMetaData", ["id", "filepath", "n_frames"])):
+    pass
+
+
+def _target_metadata_to_tsv(meta):
+    return "\t".join([str(meta.id), meta.filepath, str(meta.n_frames)])
 
 
 _eos = 1
@@ -50,13 +67,30 @@ class Blizzard2012(Corpus):
                 range(1, 33)]
 
     def text_and_path_rdd(self, sc: SparkContext):
-        return sc.parallelize(self._extract_all_text_and_path())
+        num_partition = sc.defaultParallelism
+        return sc.parallelize(
+            self._extract_all_text_and_path())
 
     def process_targets(self, rdd: RDD):
-        return rdd.map(self._process_target, preservesPartitioning=True)
+        return rdd.mapValues(self._process_target)
 
     def process_sources(self, rdd: RDD):
-        return rdd.map(self._process_source, preservesPartitioning=True)
+        return rdd.mapValues(self._process_source)
+
+    def aggregate_source_metadata(self, rdd: RDD):
+        def map_fn(splitIndex, iterator):
+            csv, max_len = reduce(
+                lambda acc, kv: ("\n".join([acc[0], _source_metadata_to_tsv(kv[1])]), max(acc[1], len(kv[1].text))),
+                iterator, ("", 0))
+            filename = f"blizzard2012-source-metadata-{splitIndex:03d}.tsv"
+            filepath = os.path.join(self.out_dir, filename)
+            with open(filepath, mode="w") as f:
+                f.write(csv)
+            yield csv.count("\n") + 1, max_len
+
+        return rdd.sortByKey().mapPartitionsWithIndex(
+            map_fn, preservesPartitioning=True).fold(
+            (0, 0), lambda acc, xy: (acc[0] + xy[0], max(acc[1], xy[1])))
 
     def _extract_text_and_path(self, book, line, index):
         parts = line.strip().split('\t')
@@ -73,7 +107,7 @@ class Blizzard2012(Corpus):
                 for line in f:
                     extracted = self._extract_text_and_path(book, line, index)
                     if extracted is not None:
-                        yield extracted
+                        yield (index, extracted)
                         index += 1
 
     def _load_labels(self, path):
@@ -111,13 +145,14 @@ class Blizzard2012(Corpus):
         filename = f"blizzard2012-target-{paths.id:05d}.tfrecord"
         filepath = os.path.join(self.out_dir, filename)
         tfrecord.write_preprocessed_target_data(paths.id, spectrogram.T, mel_spectrogram.T, filepath)
-        return filename, n_frames
+        return TargetMetaData(paths.id, filepath, n_frames)
 
     def _process_source(self, paths: TextAndPath):
         sequence = self._text_to_sequence(paths.text)
         filename = f"blizzard2012-source-{paths.id:05d}.tfrecord"
         filepath = os.path.join(self.out_dir, filename)
         tfrecord.write_preprocessed_source_data2(paths.id, paths.text, sequence, paths.text, sequence, filepath)
+        return SourceMetaData(paths.id, filepath, paths.text)
 
 
 def instantiate(in_dir, out_dir):
