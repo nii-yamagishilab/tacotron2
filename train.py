@@ -24,7 +24,8 @@ def train(hparams, model_dir, source_files, target_files):
         target = tf.data.TFRecordDataset(list(target_files))
 
         dataset = DatasetSource(source, target, hparams)
-        batched = dataset.prepare_and_zip().repeat().shuffle(hparams.batch_size*5).group_by_batch()
+        batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
+            hparams.batch_size).group_by_batch()
         return batched.dataset
 
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,

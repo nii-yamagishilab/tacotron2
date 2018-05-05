@@ -49,22 +49,22 @@ class Blizzard2012(Corpus):
     @property
     def training_source_files(self):
         return [os.path.join(self.out_dir, f"blizzard2012-source-{record_id:05d}.tfrecord") for record_id in
-                range(33, 321)]
+                range(321, 23208)]
 
     @property
     def training_target_files(self):
         return [os.path.join(self.out_dir, f"blizzard2012-target-{record_id:05d}.tfrecord") for record_id in
-                range(33, 321)]
+                range(321, 23208)]
 
     @property
     def test_source_files(self):
         return [os.path.join(self.out_dir, f"blizzard2012-source-{record_id:05d}.tfrecord") for record_id in
-                range(1, 33)]
+                range(1, 320)]
 
     @property
     def test_target_files(self):
         return [os.path.join(self.out_dir, f"blizzard2012-target-{record_id:05d}.tfrecord") for record_id in
-                range(1, 33)]
+                range(1, 320)]
 
     def text_and_path_rdd(self, sc: SparkContext):
         return sc.parallelize(

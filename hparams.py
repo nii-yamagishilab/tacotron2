@@ -45,7 +45,7 @@ hparams = tf.contrib.training.HParams(
     save_summary_steps=50,
     log_step_count_steps=1,
     alignment_save_steps=100,
-    approx_min_target_length=200,
+    approx_min_target_length=100,
     batch_bucket_width=40,
     batch_num_buckets=50,
 

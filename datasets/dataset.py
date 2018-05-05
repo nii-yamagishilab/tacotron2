@@ -150,7 +150,14 @@ class DatasetBase:
         return self.apply(self.dataset.map(lambda x, y: convert(x, y)), self.hparams)
 
     def filter(self, predicate):
-        return self.apply(tf.data.Dataset.filter(self.dataset, predicate), self.hparams)
+        return self.apply(self.dataset.filter(predicate), self.hparams)
+
+    def filter_by_max_output_length(self):
+        def predicate(s, t: PreprocessedTargetData):
+            max_output_length = self.hparams.max_iters * self.hparams.outputs_per_step
+            return tf.less_equal(t.target_length, max_output_length)
+
+        return self.filter(predicate)
 
     def shuffle(self, buffer_size):
         return self.apply(self.dataset.shuffle(buffer_size), self.hparams)
@@ -166,7 +173,7 @@ class ZippedDataset(DatasetBase):
         self._hparams = hparams
 
     def apply(self, dataset, hparams):
-        return ZippedDataset(self.dataset, self.hparams)
+        return ZippedDataset(dataset, hparams)
 
     @property
     def dataset(self):
