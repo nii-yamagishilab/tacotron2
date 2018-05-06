@@ -51,6 +51,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
 
                 gradients, variables = zip(*optimizer.compute_gradients(mel_loss))
                 clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+                self.add_stats(mel_loss, None, lr)
                 # Add dependency on UPDATE_OPS; otherwise batchnorm won't work correctly. See:
                 # https://github.com/tensorflow/tensorflow/issues/1122
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
@@ -87,6 +88,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
     @staticmethod
     def add_stats(mel_loss, done_loss, learning_rate):
         tf.summary.scalar("mel_loss", mel_loss)
-        tf.summary.scalar("done_loss", done_loss)
+        if done_loss is not None:
+            tf.summary.scalar("done_loss", done_loss)
         tf.summary.scalar("learning_rate", learning_rate)
         return tf.summary.merge_all()
