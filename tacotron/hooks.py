@@ -7,12 +7,13 @@ from util.metrics import plot_alignment, plot_mel
 
 
 def write_training_result(global_step: int, id: List[int], text: List[str], predicted_mel: List[np.ndarray],
-                          ground_truth_mel: List[np.ndarray], alignment: List[np.ndarray], filename: str):
+                          ground_truth_mel: List[np.ndarray], mel_length: List[int], alignment: List[np.ndarray],
+                          filename: str):
     batch_size = len(ground_truth_mel)
     raw_predicted_mel = [m.tostring() for m in predicted_mel]
     raw_ground_truth_mel = [m.tostring() for m in ground_truth_mel]
     mel_width = ground_truth_mel[0].shape[1]
-    mel_length = [m.shape[0] for m in ground_truth_mel]
+    padded_mel_length = [m.shape[0] for m in ground_truth_mel]
     predicted_mel_length = [m.shape[0] for m in predicted_mel]
     raw_alignment = [a.tostring() for a in alignment]
     alignment_source_length = [a.shape[1] for a in alignment]
@@ -24,7 +25,8 @@ def write_training_result(global_step: int, id: List[int], text: List[str], pred
         'text': bytes_feature(text),
         'predicted_mel': bytes_feature(raw_predicted_mel),
         'ground_truth_mel': bytes_feature(raw_ground_truth_mel),
-        'mel_length': int64_feature(mel_length),
+        'mel_length': int64_feature(padded_mel_length),
+        'mel_length_without_padding': int64_feature(mel_length),
         'predicted_mel_length': int64_feature(predicted_mel_length),
         'mel_width': int64_feature([mel_width]),
         'alignment': bytes_feature(raw_alignment),
@@ -36,13 +38,15 @@ def write_training_result(global_step: int, id: List[int], text: List[str], pred
 
 class MetricsSaver(tf.train.SessionRunHook):
 
-    def __init__(self, alignment_tensors, global_step_tensor, predicted_mel_tensor, ground_truth_mel_tensor, id_tensor,
+    def __init__(self, alignment_tensors, global_step_tensor, predicted_mel_tensor, ground_truth_mel_tensor,
+                 mel_length_tensor, id_tensor,
                  text_tensor, save_steps,
                  mode, writer: tf.summary.FileWriter):
         self.alignment_tensors = alignment_tensors
         self.global_step_tensor = global_step_tensor
         self.predicted_mel_tensor = predicted_mel_tensor
         self.ground_truth_mel_tensor = ground_truth_mel_tensor
+        self.mel_length_tensor = mel_length_tensor
         self.id_tensor = id_tensor
         self.text_tensor = text_tensor
         self.save_steps = save_steps
@@ -59,14 +63,14 @@ class MetricsSaver(tf.train.SessionRunHook):
                   run_values):
         stale_global_step = run_values.results["global_step"]
         if (stale_global_step + 1) % self.save_steps == 0 or stale_global_step == 0:
-            global_step_value, alignments, predicted_mels, ground_truth_mels, ids, texts = run_context.session.run(
+            global_step_value, alignments, predicted_mels, ground_truth_mels, mel_length, ids, texts = run_context.session.run(
                 (self.global_step_tensor, self.alignment_tensors, self.predicted_mel_tensor,
-                 self.ground_truth_mel_tensor, self.id_tensor, self.text_tensor))
+                 self.ground_truth_mel_tensor, self.mel_length_tensor, self.id_tensor, self.text_tensor))
             id_strings = ",".join([str(i) for i in ids])
             result_filename = "{}_result_step{:09d}_{}.tfrecord".format(self.mode, global_step_value, id_strings)
             tf.logging.info("Saving a training result for %d at %s", global_step_value, result_filename)
             write_training_result(global_step_value, list(ids), list(texts), list(predicted_mels),
-                                  list(ground_truth_mels),
+                                  list(ground_truth_mels), list(mel_length),
                                   alignments,
                                   filename=os.path.join(self.writer.get_logdir(), result_filename))
             if self.mode == tf.estimator.ModeKeys.EVAL:

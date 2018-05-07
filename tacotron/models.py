@@ -57,7 +57,8 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                     train_op = optimizer.apply_gradients(zip(clipped_gradients, variables), global_step=global_step)
                     summary_writer = tf.summary.FileWriter(model_dir)
-                    alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel, features.id,
+                    alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel, labels.target_length,
+                                                   features.id,
                                                    features.text,
                                                    params.alignment_save_steps,
                                                    mode, summary_writer)
