@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tacotron.modules import Embedding
-from tacotron.tacotron_v1 import EncoderV1, DecoderV1
+from tacotron.tacotron_v1 import EncoderV1, DecoderV1, PostNet
 from tacotron.hooks import MetricsSaver
 
 
@@ -30,6 +30,15 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                 outputs_per_step=params.outputs_per_step,
                                 max_iters=params.max_iters)
 
+            post_net = PostNet(is_training,
+                               params.num_freq,
+                               params.post_net_cbhg_out_units,
+                               params.post_net_conv_channels,
+                               params.post_net_max_filter_width,
+                               params.post_net_projection1_out_channels,
+                               params.post_net_projection2_out_channels,
+                               params.post_net_num_highway)
+
             target = labels.mel if is_training else None
 
             embedding_output = embedding(features.source)
@@ -39,30 +48,35 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                 target=target)
             alignment = tf.transpose(decoder_state[0].alignment_history.stack(), [1, 2, 0])
 
+            linear_output = post_net(mel_output)
+
             global_step = tf.train.get_global_step()
 
             if is_training:
                 mel_loss = self.spec_loss(mel_output, labels.mel, labels.spec_loss_mask)
+                linear_loss = self.spec_loss(linear_output, labels.spec, labels.spec_loss_mask)
+                loss = mel_loss + linear_loss
                 lr = self.learning_rate_decay(
                     params.initial_learning_rate, global_step) if params.decay_learning_rate else tf.convert_to_tensor(
                     params.initial_learning_rate)
                 optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta1=params.adam_beta1,
                                                    beta2=params.adam_beta2, epsilon=params.adam_eps)
 
-                gradients, variables = zip(*optimizer.compute_gradients(mel_loss))
+                gradients, variables = zip(*optimizer.compute_gradients(loss))
                 clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-                self.add_stats(mel_loss, None, lr)
+                self.add_stats(mel_loss, linear_loss, None, lr)
                 # Add dependency on UPDATE_OPS; otherwise batchnorm won't work correctly. See:
                 # https://github.com/tensorflow/tensorflow/issues/1122
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                     train_op = optimizer.apply_gradients(zip(clipped_gradients, variables), global_step=global_step)
                     summary_writer = tf.summary.FileWriter(model_dir)
-                    alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel, labels.target_length,
+                    alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel,
+                                                   labels.target_length,
                                                    features.id,
                                                    features.text,
                                                    params.alignment_save_steps,
                                                    mode, summary_writer)
-                    return tf.estimator.EstimatorSpec(mode, loss=mel_loss, train_op=train_op,
+                    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op,
                                                       training_hooks=[alignment_saver])
 
         super(SingleSpeakerTacotronV1Model, self).__init__(
@@ -87,8 +101,11 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
         return init_rate * warmup_steps ** 0.5 * tf.minimum(step * warmup_steps ** -1.5, step ** -0.5)
 
     @staticmethod
-    def add_stats(mel_loss, done_loss, learning_rate):
-        tf.summary.scalar("mel_loss", mel_loss)
+    def add_stats(mel_loss, linear_loss, done_loss, learning_rate):
+        if mel_loss is not None:
+            tf.summary.scalar("mel_loss", mel_loss)
+        if linear_loss is not None:
+            tf.summary.scalar("linear_loss", linear_loss)
         if done_loss is not None:
             tf.summary.scalar("done_loss", done_loss)
         tf.summary.scalar("learning_rate", learning_rate)

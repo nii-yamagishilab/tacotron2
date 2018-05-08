@@ -149,3 +149,35 @@ class DecoderV1(tf.layers.Layer):
 
         mel_output = tf.reshape(decoder_outputs, [batch_size, -1, self.num_mels])
         return mel_output, final_decoder_state
+
+
+class PostNet(tf.layers.Layer):
+
+    def __init__(self, is_training,
+                 num_freq,
+                 cbhg_out_units=256, conv_channels=128, max_filter_width=8,
+                 projection1_out_channels=256,
+                 projection2_out_channels=80,
+                 num_highway=4,
+                 trainable=True, name=None, **kwargs):
+        super(PostNet, self).__init__(name=name, trainable=trainable, **kwargs)
+        self.cbhg = CBHG(cbhg_out_units,
+                         conv_channels,
+                         max_filter_width,
+                         projection1_out_channels,
+                         projection2_out_channels,
+                         num_highway,
+                         is_training)
+
+        self.linear = tf.layers.Dense(num_freq)
+
+    def build(self, _):
+        self.built = True
+
+    def call(self, inputs, **kwargs):
+        cbhg_output = self.cbhg(inputs)
+        dense_output = self.linear(cbhg_output)
+        return dense_output
+
+    def compute_output_shape(self, input_shape):
+        return self.linear.compute_output_shape(input_shape)

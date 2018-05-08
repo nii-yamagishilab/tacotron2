@@ -35,6 +35,14 @@ hparams = tf.contrib.training.HParams(
     attention_out_units=256,
     decoder_out_units=256,
 
+    ## Post net
+    post_net_cbhg_out_units=256,
+    post_net_conv_channels=128,
+    post_net_max_filter_width=8,
+    post_net_projection1_out_channels=256,
+    post_net_projection2_out_channels=80,
+    post_net_num_highway=4,
+
     # Training:
     batch_size=32,
     adam_beta1=0.9,
