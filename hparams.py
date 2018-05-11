@@ -61,6 +61,9 @@ hparams = tf.contrib.training.HParams(
 
     # Eval:
     max_iters=200,
+    num_evaluation_steps=32,
+    eval_start_delay_secs=1800,
+    eval_throttle_secs=600,
 )
 
 

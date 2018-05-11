@@ -34,7 +34,8 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
         target = tf.data.TFRecordDataset(list(eval_target_files))
 
         dataset = DatasetSource(source, target, hparams)
-        dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().group_by_batch(batch_size=1)
+        dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
+            hparams.num_evaluation_steps).group_by_batch(batch_size=1)
         return dataset.dataset
 
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,
@@ -42,7 +43,10 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
     estimator = SingleSpeakerTacotronV1Model(hparams, model_dir, config=run_config)
 
     train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn)
-    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn,
+                                      steps=hparams.num_evaluation_steps,
+                                      throttle_secs=hparams.eval_throttle_secs,
+                                      start_delay_secs=hparams.eval_start_delay_secs)
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
