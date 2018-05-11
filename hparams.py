@@ -45,7 +45,7 @@ hparams = tf.contrib.training.HParams(
 
     # Training:
     train_seq2seq=True,
-    train_postnet=False,
+    train_postnet=True,
     batch_size=32,
     adam_beta1=0.9,
     adam_beta2=0.999,

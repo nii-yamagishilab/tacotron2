@@ -127,6 +127,8 @@ class CBHG(tf.layers.Layer):
                                   is_training=is_training,
                                   name="proj2")
 
+        self.adjustment_layer = tf.layers.Dense(half_out_units)
+
         self.highway_nets = [HighwayNet(half_out_units) for i in range(1, num_highway + 1)]
 
     def build(self, _):
@@ -142,6 +144,9 @@ class CBHG(tf.layers.Layer):
 
         # residual connection
         highway_input = proj2_output + inputs
+
+        if highway_input.shape[2] != self.out_units // 2:
+            highway_input = self.adjustment_layer(highway_input)
 
         highway_output = reduce(lambda acc, hw: hw(acc), self.highway_nets, highway_input)
 
