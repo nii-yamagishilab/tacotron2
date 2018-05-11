@@ -183,8 +183,8 @@ class ZippedDataset(DatasetBase):
     def hparams(self):
         return self._hparams
 
-    def group_by_batch(self):
-        batch_size = self.hparams.batch_size
+    def group_by_batch(self, batch_size=None):
+        batch_size = batch_size if batch_size is not None else self.hparams.batch_size
         approx_min_target_length = self.hparams.approx_min_target_length
         bucket_width = self.hparams.batch_bucket_width
         num_buckets = self.hparams.batch_num_buckets

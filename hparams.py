@@ -44,6 +44,8 @@ hparams = tf.contrib.training.HParams(
     post_net_num_highway=4,
 
     # Training:
+    train_seq2seq=True,
+    train_postnet=False,
     batch_size=32,
     adam_beta1=0.9,
     adam_beta2=0.999,

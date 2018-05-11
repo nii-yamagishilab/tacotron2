@@ -3,7 +3,7 @@ from tensorflow.contrib.rnn import GRUCell, RNNCell, MultiRNNCell, OutputProject
 from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention, AttentionWrapper
 from tacotron.modules import PreNet, CBHG
 from tacotron.rnn_wrappers import DecoderPreNetWrapper, ConcatOutputAndAttentionWrapper
-from tacotron.helpers import InferenceHelper, TrainingHelper
+from tacotron.helpers import InferenceHelper, TrainingHelper, ValidationHelper
 from functools import reduce
 from typing import Tuple
 
@@ -127,7 +127,7 @@ class DecoderV1(tf.layers.Layer):
     def build(self, _):
         self.built = True
 
-    def call(self, source, is_training=None, memory_sequence_length=None, target=None):
+    def call(self, source, is_training=None, is_validation=None, memory_sequence_length=None, target=None):
         assert is_training is not None
 
         prenets = tuple([PreNet(out_unit, is_training, self._drop_rate)
@@ -140,10 +140,16 @@ class DecoderV1(tf.layers.Layer):
 
         decoder_initial_state = output_cell.zero_state(batch_size, dtype=tf.float32)
 
-        helper = TrainingHelper(target, self.num_mels,
-                                self.outputs_per_step) if is_training else InferenceHelper(batch_size,
-                                                                                           self.num_mels,
-                                                                                           self.outputs_per_step)
+        helper = TrainingHelper(target,
+                                self.num_mels,
+                                self.outputs_per_step) if is_training \
+            else ValidationHelper(target, batch_size,
+                                  self.num_mels,
+                                  self.outputs_per_step) if is_validation \
+            else InferenceHelper(batch_size,
+                                 self.num_mels,
+                                 self.outputs_per_step)
+
         (decoder_outputs, _), final_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
             BasicDecoder(output_cell, helper, decoder_initial_state), maximum_iterations=self.max_iters)
 

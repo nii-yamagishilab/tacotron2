@@ -9,6 +9,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
     def __init__(self, params, model_dir=None, config=None, warm_start_from=None):
         def model_fn(features, labels, mode, params):
             is_training = mode == tf.estimator.ModeKeys.TRAIN
+            is_validation = mode == tf.estimator.ModeKeys.EVAL
 
             embedding = Embedding(params.num_symbols, embedding_dim=params.embedding_dim)
 
@@ -39,23 +40,32 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                params.post_net_projection2_out_channels,
                                params.post_net_num_highway)
 
-            target = labels.mel if is_training else None
+            target = labels.mel if (is_training or is_validation) else None
 
             embedding_output = embedding(features.source)
             encoder_output = encoder(embedding_output)
-            mel_output, decoder_state = decoder(encoder_output, is_training=is_training,
+            mel_output, decoder_state = decoder(encoder_output,
+                                                is_training=is_training,
+                                                is_validation=is_validation,
                                                 memory_sequence_length=features.source_length,
                                                 target=target)
             alignment = tf.transpose(decoder_state[0].alignment_history.stack(), [1, 2, 0])
 
-            linear_output = post_net(mel_output)
+            linear_output = post_net(labels.mel) if params.train_postnet else None
 
             global_step = tf.train.get_global_step()
 
+            if mode is not tf.estimator.ModeKeys.PREDICT:
+                mel_loss = self.spec_loss(mel_output, labels.mel,
+                                          labels.spec_loss_mask) if params.train_seq2seq else None
+                linear_loss = self.spec_loss(linear_output, labels.spec,
+                                             labels.spec_loss_mask) if params.train_postnet else None
+                loss = mel_loss + linear_loss if params.train_seq2seq and params.train_postnet \
+                    else mel_loss if params.train_seq2seq \
+                    else linear_loss if params.train_postnet \
+                    else None
+
             if is_training:
-                mel_loss = self.spec_loss(mel_output, labels.mel, labels.spec_loss_mask)
-                linear_loss = self.spec_loss(linear_output, labels.spec, labels.spec_loss_mask)
-                loss = mel_loss + linear_loss
                 lr = self.learning_rate_decay(
                     params.initial_learning_rate, global_step) if params.decay_learning_rate else tf.convert_to_tensor(
                     params.initial_learning_rate)
@@ -64,7 +74,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
 
                 gradients, variables = zip(*optimizer.compute_gradients(loss))
                 clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-                self.add_stats(mel_loss, linear_loss, None, lr)
+                self.add_training_stats(mel_loss, linear_loss, None, lr)
                 # Add dependency on UPDATE_OPS; otherwise batchnorm won't work correctly. See:
                 # https://github.com/tensorflow/tensorflow/issues/1122
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
@@ -78,6 +88,19 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                    mode, summary_writer)
                     return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op,
                                                       training_hooks=[alignment_saver])
+
+            if is_validation:
+                eval_metric_ops = self.get_validation_metrics(mel_loss, linear_loss, done_loss=None)
+                summary_writer = tf.summary.FileWriter(model_dir)
+                alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel,
+                                               labels.target_length,
+                                               features.id,
+                                               features.text,
+                                               1,
+                                               mode, summary_writer)
+                return tf.estimator.EstimatorSpec(mode, loss=loss,
+                                                  evaluation_hooks=[alignment_saver],
+                                                  eval_metric_ops=eval_metric_ops)
 
         super(SingleSpeakerTacotronV1Model, self).__init__(
             model_fn=model_fn, model_dir=model_dir, config=config,
@@ -101,7 +124,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
         return init_rate * warmup_steps ** 0.5 * tf.minimum(step * warmup_steps ** -1.5, step ** -0.5)
 
     @staticmethod
-    def add_stats(mel_loss, linear_loss, done_loss, learning_rate):
+    def add_training_stats(mel_loss, linear_loss, done_loss, learning_rate):
         if mel_loss is not None:
             tf.summary.scalar("mel_loss", mel_loss)
         if linear_loss is not None:
@@ -110,3 +133,14 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
             tf.summary.scalar("done_loss", done_loss)
         tf.summary.scalar("learning_rate", learning_rate)
         return tf.summary.merge_all()
+
+    @staticmethod
+    def get_validation_metrics(mel_loss, linear_loss, done_loss):
+        metrics = {}
+        if mel_loss is not None:
+            metrics["mel_loss"] = tf.metrics.mean(mel_loss)
+        if linear_loss is not None:
+            metrics["linear_loss"] = tf.metrics.mean(linear_loss)
+        if done_loss is not None:
+            metrics["done_loss"] = tf.metrics.mean(done_loss)
+        return metrics

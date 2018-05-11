@@ -15,10 +15,10 @@ class Corpus:
 
     @property
     @abstractmethod
-    def test_source_files(self):
+    def validation_source_files(self):
         raise NotImplementedError("test_source_files")
 
     @property
     @abstractmethod
-    def test_target_files(self):
+    def validation_target_files(self):
         raise NotImplementedError("test_target_files")

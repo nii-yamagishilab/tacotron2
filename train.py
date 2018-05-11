@@ -18,21 +18,33 @@ from tacotron.models import SingleSpeakerTacotronV1Model
 from hparams import hparams, hparams_debug_string
 
 
-def train(hparams, model_dir, source_files, target_files):
+def train_and_evaluate(hparams, model_dir, train_source_files, train_target_files, eval_source_files,
+                       eval_target_files):
     def train_input_fn():
-        source = tf.data.TFRecordDataset(list(source_files))
-        target = tf.data.TFRecordDataset(list(target_files))
+        source = tf.data.TFRecordDataset(list(train_source_files))
+        target = tf.data.TFRecordDataset(list(train_target_files))
 
         dataset = DatasetSource(source, target, hparams)
         batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
             hparams.batch_size).group_by_batch()
         return batched.dataset
 
+    def eval_input_fn():
+        source = tf.data.TFRecordDataset(list(eval_source_files))
+        target = tf.data.TFRecordDataset(list(eval_target_files))
+
+        dataset = DatasetSource(source, target, hparams)
+        dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().group_by_batch(batch_size=1)
+        return dataset.dataset
+
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,
                                         log_step_count_steps=hparams.log_step_count_steps)
     estimator = SingleSpeakerTacotronV1Model(hparams, model_dir, config=run_config)
 
-    estimator.train(lambda: train_input_fn())
+    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn)
+    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+
+    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
 
 def main():
@@ -49,7 +61,12 @@ def main():
     print(hparams_debug_string())
 
     tf.logging.set_verbosity(tf.logging.INFO)
-    train(hparams, checkpoint_dir, corpus_instance.training_source_files, corpus_instance.training_target_files)
+    train_and_evaluate(hparams,
+                       checkpoint_dir,
+                       corpus_instance.training_source_files,
+                       corpus_instance.training_target_files,
+                       corpus_instance.validation_source_files,
+                       corpus_instance.validation_target_files)
 
 
 if __name__ == '__main__':

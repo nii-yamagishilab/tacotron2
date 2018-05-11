@@ -37,6 +37,42 @@ class InferenceHelper(Helper):
         return (finished, next_inputs, state)
 
 
+class ValidationHelper(Helper):
+
+    def __init__(self, targets, batch_size, output_dim, r, n_feed_frame=1):
+        assert n_feed_frame <= r
+        self._batch_size = batch_size
+        self._output_dim = output_dim
+        self._end_token = tf.tile([0.0], [output_dim * r])
+        self.n_feed_frame = n_feed_frame
+        self.num_steps = tf.shape(targets)[1] // r
+
+    @property
+    def batch_size(self):
+        return self._batch_size
+
+    @property
+    def sample_ids_shape(self):
+        return tf.TensorShape([])
+
+    @property
+    def sample_ids_dtype(self):
+        return tf.int32
+
+    def initialize(self, name=None):
+        return (tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim))
+
+    def sample(self, time, outputs, state, name=None):
+        # return all-zero dummy tensor
+        return tf.tile([0], [self._batch_size])
+
+    def next_inputs(self, time, outputs, state, sample_ids, name=None):
+        finished = (time + 1 >= self.num_steps)
+        next_inputs = outputs[:, -self._output_dim * self.n_feed_frame:]
+        next_inputs.set_shape([outputs.get_shape()[0].value, self._output_dim * self.n_feed_frame])
+        return (finished, next_inputs, state)
+
+
 class TrainingHelper(Helper):
 
     def __init__(self, targets, output_dim, r, n_feed_frame=1):

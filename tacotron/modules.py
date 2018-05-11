@@ -102,7 +102,6 @@ class CBHG(tf.layers.Layer):
                  trainable=True, name=None, **kwargs):
         half_out_units = out_units // 2
         assert out_units % 2 == 0
-        assert projection2_out_channels == half_out_units
         super(CBHG, self).__init__(name=name, trainable=trainable, **kwargs)
 
         self.out_units = out_units
