@@ -2,6 +2,7 @@ import tensorflow as tf
 from tacotron.modules import Embedding
 from tacotron.tacotron_v1 import EncoderV1, DecoderV1, PostNet
 from tacotron.hooks import MetricsSaver
+from util.audio import inv_spectrogram_tf
 
 
 class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
@@ -185,6 +186,7 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
                 return tf.estimator.EstimatorSpec(mode, predictions={
                     "id": features.id,
                     "spec": linear_output,
+                    "audio": inv_spectrogram_tf(linear_output)
                 })
 
         super(TacotronV1PostNetModel, self).__init__(

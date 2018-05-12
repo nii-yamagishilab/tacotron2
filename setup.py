@@ -10,6 +10,7 @@ setup(name='tacotron2',
       packages=find_packages(),
       install_requires=[
           "numpy",
+          "scipy",
       ],
       extras_require={
           "test": [

@@ -14,9 +14,11 @@ Options:
 from docopt import docopt
 import tensorflow as tf
 import importlib
+import os
 from datasets.dataset import DatasetSource, PostNetDatasetSource, PredictedMel
 from tacotron.models import SingleSpeakerTacotronV1Model, TacotronV1PostNetModel
 from hparams import hparams, hparams_debug_string
+from util.audio import save_wav
 
 
 def predict(hparams,
@@ -51,7 +53,9 @@ def predict(hparams,
     postnet_estimator = TacotronV1PostNetModel(hparams, postnet_model_dir)
 
     for v in postnet_estimator.predict(predict_postnet_input_fn):
-        print(v)
+        filename = f"{v['id']}.wav"
+        filepath = os.path.join(postnet_model_dir, filename)
+        save_wav(v["audio"], filepath)
 
 
 def main():
