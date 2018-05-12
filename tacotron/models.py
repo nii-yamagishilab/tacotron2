@@ -10,6 +10,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
         def model_fn(features, labels, mode, params):
             is_training = mode == tf.estimator.ModeKeys.TRAIN
             is_validation = mode == tf.estimator.ModeKeys.EVAL
+            is_prediction = mode == tf.estimator.ModeKeys.PREDICT
 
             embedding = Embedding(params.num_symbols, embedding_dim=params.embedding_dim)
 
@@ -86,6 +87,13 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                   evaluation_hooks=[alignment_saver],
                                                   eval_metric_ops=eval_metric_ops)
 
+            if is_prediction:
+                return tf.estimator.EstimatorSpec(mode, predictions={
+                    "id": features.id,
+                    "mel": mel_output,
+                    "alignment": alignment,
+                })
+
         super(SingleSpeakerTacotronV1Model, self).__init__(
             model_fn=model_fn, model_dir=model_dir, config=config,
             params=params, warm_start_from=warm_start_from)
@@ -132,6 +140,7 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
         def model_fn(features, labels, mode, params):
             is_training = mode == tf.estimator.ModeKeys.TRAIN
             is_validation = mode == tf.estimator.ModeKeys.EVAL
+            is_predction = mode == tf.estimator.ModeKeys.PREDICT
 
             post_net = PostNet(is_training,
                                params.num_freq,
@@ -142,7 +151,7 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
                                params.post_net_projection2_out_channels,
                                params.post_net_num_highway)
 
-            linear_output = post_net(labels.mel)
+            linear_output = post_net(features.mel)
 
             global_step = tf.train.get_global_step()
 
@@ -171,6 +180,12 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
                 eval_metric_ops = self.get_validation_metrics(linear_loss)
                 return tf.estimator.EstimatorSpec(mode, loss=loss,
                                                   eval_metric_ops=eval_metric_ops)
+
+            if is_predction:
+                return tf.estimator.EstimatorSpec(mode, predictions={
+                    "id": features.id,
+                    "spec": linear_output,
+                })
 
         super(TacotronV1PostNetModel, self).__init__(
             model_fn=model_fn, model_dir=model_dir, config=config,

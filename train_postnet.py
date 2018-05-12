@@ -13,7 +13,7 @@ Options:
 from docopt import docopt
 import tensorflow as tf
 import importlib
-from datasets.dataset import DatasetSource
+from datasets.dataset import PostNetDatasetSource
 from tacotron.models import TacotronV1PostNetModel
 from hparams import hparams, hparams_debug_string
 
@@ -21,20 +21,18 @@ from hparams import hparams, hparams_debug_string
 def train_and_evaluate(hparams, model_dir, train_source_files, train_target_files, eval_source_files,
                        eval_target_files):
     def train_input_fn():
-        source = tf.data.TFRecordDataset(list(train_source_files))
         target = tf.data.TFRecordDataset(list(train_target_files))
 
-        dataset = DatasetSource(source, target, hparams)
-        batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
+        dataset = PostNetDatasetSource(target, hparams)
+        batched = dataset.create_source_and_target().filter_by_max_output_length().repeat().shuffle(
             hparams.batch_size).group_by_batch()
         return batched.dataset
 
     def eval_input_fn():
-        source = tf.data.TFRecordDataset(list(eval_source_files))
         target = tf.data.TFRecordDataset(list(eval_target_files))
 
-        dataset = DatasetSource(source, target, hparams)
-        dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
+        dataset = PostNetDatasetSource(target, hparams)
+        dataset = dataset.create_source_and_target().filter_by_max_output_length().repeat().shuffle(
             hparams.num_evaluation_steps).group_by_batch(batch_size=1)
         return dataset.dataset
 

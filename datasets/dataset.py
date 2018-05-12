@@ -19,6 +19,33 @@ class TargetData(
     pass
 
 
+class PostNetSourceData(
+    namedtuple("PostNetSourceData",
+               ["id", "mel", "mel_width", "target_length"])):
+    pass
+
+
+class PostNetTargetData(
+    namedtuple("PostNetTargetData",
+               ["id", "spec", "spec_width", "target_length", "spec_loss_mask"])):
+    pass
+
+
+class SourceDataWithMelPrediction(
+    namedtuple("SourceDataWithMelPrediction",
+               ["id",
+                "spec", "spec_width",
+                "ground_truth_mel", "ground_truth_mel_width", "ground_truth_target_length",
+                "mel", "mel_width", "target_length"])):
+    pass
+
+
+class PredictedMel(
+    namedtuple("PredictedMel",
+               ["id", "predicted_mel", "predicted_mel_width", "predicted_target_length", "alignment"])):
+    pass
+
+
 class DatasetSource:
 
     def __init__(self, source, target, hparams):
@@ -108,46 +135,6 @@ class DatasetBase:
     @abstractmethod
     def hparams(self):
         raise NotImplementedError("hparams")
-
-    def swap_source(self):
-        def convert(s: SourceData, t):
-            return SourceData(
-                id=s.id,
-                text=s.text2,
-                source=s.source2,
-                source_length=s.source_length2,
-                text2=s.text,
-                source2=s.source,
-                source_length2=s.source_length,
-            ), t
-
-        return self.apply(self.dataset.map(lambda x, y: convert(x, y)), self.hparams)
-
-    def swap_source_random(self, swap_probability):
-        def convert(s: SourceData, t):
-            r = tf.random_uniform(shape=(), minval=0, maxval=1)
-
-            def s1():
-                return s.text, s.source, s.source_length
-
-            def s2():
-                return s.text2, s.source2, s.source_length2
-
-            condition = r > swap_probability
-            text, source, source_length = tf.cond(condition, s1, s2)
-            text2, source2, source_length2 = tf.cond(condition, s2, s1)
-
-            return SourceData(
-                id=s.id,
-                text=text,
-                source=source,
-                source_length=source_length,
-                text2=text2,
-                source2=source2,
-                source_length2=source_length2,
-            ), t
-
-        return self.apply(self.dataset.map(lambda x, y: convert(x, y)), self.hparams)
 
     def filter(self, predicate):
         return self.apply(self.dataset.filter(predicate), self.hparams)
@@ -250,7 +237,7 @@ class BatchedDataset(DatasetBase):
         self._hparams = hparams
 
     def apply(self, dataset, hparams):
-        return ZippedDataset(self.dataset, self.hparams)
+        return BatchedDataset(self.dataset, self.hparams)
 
     @property
     def dataset(self):
@@ -259,3 +246,187 @@ class BatchedDataset(DatasetBase):
     @property
     def hparams(self):
         return self._hparams
+
+
+class PostNetDatasetSource:
+
+    def __init__(self, target, hparams):
+        self._target = target
+        self._hparams = hparams
+
+    @property
+    def hparams(self):
+        return self._hparams
+
+    def create_source_and_target(self):
+        return PostNetPairedDataset(self._prepare_target(), self.hparams)
+
+    def _prepare_target(self):
+        def convert(target: PreprocessedTargetData):
+            r = self.hparams.outputs_per_step
+
+            target_length = target.target_length
+            padded_target_length = (target_length // r + 1) * r
+
+            # spec and mel length must be multiple of outputs_per_step
+            def padding_function(t):
+                tail_padding = padded_target_length - target_length
+                padding_shape = tf.sparse_tensor_to_dense(
+                    tf.SparseTensor(indices=[(0, 1)], values=tf.expand_dims(tail_padding, axis=0), dense_shape=(2, 2)))
+                return lambda: tf.pad(t, paddings=padding_shape)
+
+            no_padding_condition = tf.equal(tf.to_int64(0), target_length % r)
+
+            spec = tf.cond(no_padding_condition, lambda: target.spec, padding_function(target.spec))
+            mel = tf.cond(no_padding_condition, lambda: target.mel, padding_function(target.mel))
+
+            spec.set_shape((None, self.hparams.num_freq))
+            mel.set_shape((None, self.hparams.num_mels))
+
+            padded_target_length = tf.cond(no_padding_condition, lambda: target_length, lambda: padded_target_length)
+
+            # loss mask
+            spec_loss_mask = tf.ones(shape=padded_target_length, dtype=tf.float32)
+
+            return (PostNetSourceData(target.id, mel, target.mel_width, padded_target_length),
+                    PostNetTargetData(target.id, spec, target.spec_width, padded_target_length, spec_loss_mask))
+
+        return self._decode_target().map(lambda inputs: convert(inputs))
+
+    def _decode_target(self):
+        return self._target.map(lambda d: decode_preprocessed_target_data(parse_preprocessed_target_data(d)))
+
+
+class PostNetPairedDataset(DatasetBase):
+
+    def __init__(self, dataset, hparams):
+        self._dataset = dataset
+        self._hparams = hparams
+
+    def apply(self, dataset, hparams):
+        return PostNetPairedDataset(dataset, hparams)
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def hparams(self):
+        return self._hparams
+
+    def group_by_batch(self, batch_size=None):
+        batch_size = batch_size if batch_size is not None else self.hparams.batch_size
+        approx_min_target_length = self.hparams.approx_min_target_length
+        bucket_width = self.hparams.batch_bucket_width
+        num_buckets = self.hparams.batch_num_buckets
+
+        def key_func(source, target):
+            target_length = tf.minimum(source.target_length - approx_min_target_length, 0)
+            bucket_id = target_length // bucket_width
+            return tf.minimum(tf.to_int64(num_buckets), bucket_id)
+
+        def reduce_func(unused_key, window: tf.data.Dataset):
+            return window.padded_batch(batch_size, padded_shapes=(
+                PostNetSourceData(
+                    id=tf.TensorShape([]),
+                    mel=tf.TensorShape([None, self.hparams.num_mels]),
+                    mel_width=tf.TensorShape([]),
+                    target_length=tf.TensorShape([]),
+                ),
+                PostNetTargetData(
+                    id=tf.TensorShape([]),
+                    spec=tf.TensorShape([None, self.hparams.num_freq]),
+                    spec_width=tf.TensorShape([]),
+                    target_length=tf.TensorShape([]),
+                    spec_loss_mask=tf.TensorShape([None]),
+                )), padding_values=(
+                PostNetSourceData(
+                    id=tf.to_int64(0),
+                    mel=tf.to_float(0),
+                    mel_width=tf.to_int64(0),
+                    target_length=tf.to_int64(0),
+                ),
+                PostNetTargetData(
+                    id=tf.to_int64(0),
+                    spec=tf.to_float(0),
+                    spec_width=tf.to_int64(0),
+                    target_length=tf.to_int64(0),
+                    spec_loss_mask=tf.to_float(0),
+                )))
+
+        batched = self.dataset.apply(tf.contrib.data.group_by_window(key_func,
+                                                                     reduce_func,
+                                                                     window_size=batch_size * 5))
+        return BatchedDataset(batched, self.hparams)
+
+    def combine_with_prediction(self, predicted_mel_dataset):
+        def combine_func(source_and_target, prediction: PredictedMel):
+            source, target = source_and_target
+            source_with_prediction = SourceDataWithMelPrediction(
+                id=source.id,
+                spec=target.spec,
+                spec_width=target.spec_width,
+                ground_truth_mel=source.mel,
+                ground_truth_mel_width=source.mel_width,
+                ground_truth_target_length=source.target_length,
+                mel=prediction.predicted_mel,
+                mel_width=prediction.predicted_mel_width,
+                target_length=prediction.predicted_target_length,
+            )
+            return source_with_prediction
+
+        dataset = tf.data.Dataset.zip((self.dataset, predicted_mel_dataset)).map(combine_func)
+        return PredictionDataset(dataset, self.hparams)
+
+
+class PredictionDataset(DatasetBase):
+
+    def __init__(self, dataset, hparams):
+        self._dataset = dataset
+        self._hparams = hparams
+
+    def apply(self, dataset, hparams):
+        return PredictionDataset(dataset, hparams)
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def hparams(self):
+        return self._hparams
+
+    def expand_batch_dim(self):
+        batch_size = 1
+
+        def key_func(source):
+            return source.id
+
+        def reduce_func(unused_key, window: tf.data.Dataset):
+            return window.padded_batch(batch_size, padded_shapes=SourceDataWithMelPrediction(
+                id=tf.TensorShape([]),
+                spec=tf.TensorShape([None, self.hparams.num_freq]),
+                spec_width=tf.TensorShape([]),
+                ground_truth_mel=tf.TensorShape([None, self.hparams.num_mels]),
+                ground_truth_mel_width=tf.TensorShape([]),
+                ground_truth_target_length=tf.TensorShape([]),
+                mel=tf.TensorShape([None, self.hparams.num_mels]),
+                mel_width=tf.TensorShape([]),
+                target_length=tf.TensorShape([]),
+            ), padding_values=SourceDataWithMelPrediction(
+                id=tf.to_int64(0),
+                spec=tf.to_float(0),
+                spec_width=tf.to_int64(0),
+                ground_truth_mel=tf.to_float(0),
+                ground_truth_mel_width=tf.to_int64(0),
+                ground_truth_target_length=tf.to_int64(0),
+                mel=tf.to_float(0),
+                mel_width=tf.to_int64(0),
+                target_length=tf.to_int64(0),
+            ))
+
+        batched = self.dataset.apply(tf.contrib.data.group_by_window(key_func,
+                                                                     reduce_func,
+                                                                     window_size=batch_size * 5))
+        paired = batched.map(lambda v: (v, v))
+        return BatchedDataset(paired, self.hparams)
