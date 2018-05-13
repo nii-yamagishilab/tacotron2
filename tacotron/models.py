@@ -37,7 +37,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
 
             embedding_output = embedding(features.source)
             encoder_output = encoder(embedding_output)
-            mel_output, decoder_state = decoder(encoder_output,
+            mel_output, stop_token, decoder_state = decoder(encoder_output,
                                                 is_training=is_training,
                                                 is_validation=is_validation,
                                                 memory_sequence_length=features.source_length,
@@ -49,7 +49,8 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
             if mode is not tf.estimator.ModeKeys.PREDICT:
                 mel_loss = self.spec_loss(mel_output, labels.mel,
                                           labels.spec_loss_mask)
-                loss = mel_loss
+                done_loss = self.binary_loss(stop_token, labels.done, labels.binary_loss_mask)
+                loss = mel_loss + done_loss
 
             if is_training:
                 lr = self.learning_rate_decay(
@@ -60,7 +61,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
 
                 gradients, variables = zip(*optimizer.compute_gradients(loss))
                 clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-                self.add_training_stats(mel_loss, None, lr)
+                self.add_training_stats(mel_loss, done_loss, lr)
                 # Add dependency on UPDATE_OPS; otherwise batchnorm won't work correctly. See:
                 # https://github.com/tensorflow/tensorflow/issues/1122
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
@@ -76,7 +77,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                       training_hooks=[alignment_saver])
 
             if is_validation:
-                eval_metric_ops = self.get_validation_metrics(mel_loss, done_loss=None)
+                eval_metric_ops = self.get_validation_metrics(mel_loss, done_loss)
                 summary_writer = tf.summary.FileWriter(model_dir)
                 alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel,
                                                labels.target_length,
@@ -109,6 +110,10 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
             l1_loss = (1 - priority_w) * l1_loss + priority_w * priority_loss
 
         return tf.losses.compute_weighted_loss(l1_loss, weights=tf.expand_dims(mask, axis=2))
+
+    @staticmethod
+    def binary_loss(done_hat, done, mask):
+        return tf.losses.sigmoid_cross_entropy(done, tf.squeeze(done_hat, axis=-1), weights=mask)
 
     @staticmethod
     def learning_rate_decay(init_rate, global_step):

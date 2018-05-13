@@ -2,8 +2,8 @@ import tensorflow as tf
 from tensorflow.contrib.rnn import GRUCell, RNNCell, MultiRNNCell, OutputProjectionWrapper, ResidualWrapper
 from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention, AttentionWrapper
 from tacotron.modules import PreNet, CBHG
-from tacotron.rnn_wrappers import DecoderPreNetWrapper, ConcatOutputAndAttentionWrapper
-from tacotron.helpers import InferenceHelper, TrainingHelper, ValidationHelper
+from tacotron.rnn_wrappers import DecoderPreNetWrapper, ConcatOutputAndAttentionWrapper, OutputAndStopTokenWrapper
+from tacotron.helpers import StopTokenBasedInferenceHelper, TrainingHelper, ValidationHelper
 from functools import reduce
 from typing import Tuple
 
@@ -123,6 +123,7 @@ class DecoderV1(tf.layers.Layer):
         self.num_mels = num_mels
         self.outputs_per_step = outputs_per_step
         self.max_iters = max_iters
+        self.stop_token_fc = tf.layers.Dense(1)
 
     def build(self, _):
         self.built = True
@@ -136,9 +137,9 @@ class DecoderV1(tf.layers.Layer):
         batch_size = tf.shape(source)[0]
         attention_cell = AttentionRNNV1(self.attention_out_units, prenets, source, memory_sequence_length)
         decoder_cell = DecoderRNNV1(self.decoder_out_units, attention_cell)
-        output_cell = OutputProjectionWrapper(decoder_cell, self.num_mels * self.outputs_per_step)
+        output_and_done_cell = OutputAndStopTokenWrapper(decoder_cell, self.num_mels * self.outputs_per_step)
 
-        decoder_initial_state = output_cell.zero_state(batch_size, dtype=tf.float32)
+        decoder_initial_state = output_and_done_cell.zero_state(batch_size, dtype=tf.float32)
 
         helper = TrainingHelper(target,
                                 self.num_mels,
@@ -146,15 +147,15 @@ class DecoderV1(tf.layers.Layer):
             else ValidationHelper(target, batch_size,
                                   self.num_mels,
                                   self.outputs_per_step) if is_validation \
-            else InferenceHelper(batch_size,
-                                 self.num_mels,
-                                 self.outputs_per_step)
+            else StopTokenBasedInferenceHelper(batch_size,
+                                               self.num_mels,
+                                               self.outputs_per_step)
 
-        (decoder_outputs, _), final_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
-            BasicDecoder(output_cell, helper, decoder_initial_state), maximum_iterations=self.max_iters)
+        ((decoder_outputs, stop_token), _), final_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
+            BasicDecoder(output_and_done_cell, helper, decoder_initial_state), maximum_iterations=self.max_iters)
 
         mel_output = tf.reshape(decoder_outputs, [batch_size, -1, self.num_mels])
-        return mel_output, final_decoder_state
+        return mel_output, stop_token, final_decoder_state
 
 
 class PostNet(tf.layers.Layer):
