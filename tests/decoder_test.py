@@ -40,17 +40,21 @@ class DecoderTest(tf.test.TestCase):
         decoder = DecoderV1(drop_rate=0.0, max_iters=max_iters, num_mels=num_mels,
                             outputs_per_step=r)
 
-        output_inference, state_inference = decoder(memory, is_training=False, memory_sequence_length=source_length)
+        output_inference, stop_token_inference, alignment_inference = decoder(memory, is_training=False,
+                                                                              memory_sequence_length=source_length)
 
-        output_training, state_training = decoder(memory, is_training=True, memory_sequence_length=source_length,
-                                                  target=output_inference)
+        output_training, stop_token_training, alignment_training = decoder(memory, is_training=True,
+                                                                           memory_sequence_length=source_length,
+                                                                           target=output_inference)
 
-        alignments_inference = tf.transpose(state_inference[0].alignment_history.stack(), [1, 2, 0])
-        alignments_training = tf.transpose(state_training[0].alignment_history.stack(), [1, 2, 0])
+        alignments_inference = tf.transpose(alignment_inference[0].alignment_history.stack(), [1, 2, 0])
+        alignments_training = tf.transpose(alignment_training[0].alignment_history.stack(), [1, 2, 0])
 
         with self.test_session() as sess:
             sess.run(tf.global_variables_initializer())
-            state_inference, state_training = sess.run([alignments_inference, alignments_training])
-            self.assertAllClose(state_inference, state_training)
+            alignment_inference, alignment_training = sess.run([alignments_inference, alignments_training])
+            self.assertAllClose(alignment_inference, alignment_training)
             output_inference, output_training = sess.run([output_inference, output_training])
             self.assertAllClose(output_inference, output_training)
+            stop_token_inference, stop_token_training = sess.run([stop_token_inference, stop_token_training])
+            self.assertAllClose(stop_token_inference, stop_token_training)
