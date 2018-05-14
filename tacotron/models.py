@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tacotron.modules import Embedding
 from tacotron.tacotron_v1 import EncoderV1, DecoderV1, PostNet
-from tacotron.hooks import MetricsSaver
+from tacotron.hooks import MetricsSaver, PostNetMetricsSaver
 from util.audio import inv_spectrogram_tf
 
 
@@ -171,16 +171,30 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
                 gradients, variables = zip(*optimizer.compute_gradients(loss))
                 clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
                 self.add_training_stats(linear_loss, lr)
+                summary_writer = tf.summary.FileWriter(model_dir)
+                metrics_saver = PostNetMetricsSaver(global_step, linear_output, labels.spec,
+                                                    labels.target_length,
+                                                    features.id,
+                                                    params.alignment_save_steps,
+                                                    mode, summary_writer)
                 # Add dependency on UPDATE_OPS; otherwise batchnorm won't work correctly. See:
                 # https://github.com/tensorflow/tensorflow/issues/1122
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
                     train_op = optimizer.apply_gradients(zip(clipped_gradients, variables), global_step=global_step)
-                    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
+                    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op,
+                                                      training_hooks=[metrics_saver])
 
             if is_validation:
                 eval_metric_ops = self.get_validation_metrics(linear_loss)
+                summary_writer = tf.summary.FileWriter(model_dir)
+                metrics_saver = PostNetMetricsSaver(global_step, linear_output, labels.spec,
+                                                    labels.target_length,
+                                                    features.id,
+                                                    1,
+                                                    mode, summary_writer)
                 return tf.estimator.EstimatorSpec(mode, loss=loss,
-                                                  eval_metric_ops=eval_metric_ops)
+                                                  eval_metric_ops=eval_metric_ops,
+                                                  evaluation_hooks=[metrics_saver])
 
             if is_predction:
                 return tf.estimator.EstimatorSpec(mode, predictions={
