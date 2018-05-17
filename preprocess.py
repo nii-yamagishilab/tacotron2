@@ -15,7 +15,7 @@ if __name__ == "__main__":
     in_dir = args["<in_dir>"]
     out_dir = args["<out_dir>"]
 
-    assert name in ["blizzard2012"]
+    assert name in ["blizzard2012", "ljspeech"]
     mod = importlib.import_module("datasets." + name)
     instance = mod.instantiate(in_dir, out_dir)
 

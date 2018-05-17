@@ -1,34 +1,11 @@
 from pyspark import SparkContext, RDD
 import numpy as np
 import os
-from collections import namedtuple
 from util import audio, tfrecord
 from hparams import hparams
-from datasets.corpus import Corpus
+from datasets.corpus import Corpus, TargetMetaData, SourceMetaData, TextAndPath, target_metadata_to_tsv, \
+    source_metadata_to_tsv, eos
 from functools import reduce
-
-
-class TextAndPath(namedtuple("TextAndPath", ["id", "wav_path", "labels_path", "text"])):
-    pass
-
-
-class SourceMetaData(namedtuple("SourceMetaData", ["id", "filepath", "text"])):
-    pass
-
-
-def _source_metadata_to_tsv(meta):
-    return "\t".join([str(meta.id), meta.filepath, meta.text])
-
-
-class TargetMetaData(namedtuple("TargetMetaData", ["id", "filepath", "n_frames"])):
-    pass
-
-
-def _target_metadata_to_tsv(meta):
-    return "\t".join([str(meta.id), meta.filepath, str(meta.n_frames)])
-
-
-_eos = 1
 
 
 class Blizzard2012(Corpus):
@@ -42,7 +19,6 @@ class Blizzard2012(Corpus):
             'LifeOnTheMississippi',
             'TheAdventuresOfTomSawyer',
         ]
-        self._max_out_length = 700
         self._end_buffer = 0.05
         self._min_confidence = 90
 
@@ -88,14 +64,15 @@ class Blizzard2012(Corpus):
 
     def aggregate_source_metadata(self, rdd: RDD):
         def map_fn(splitIndex, iterator):
-            csv, max_len = reduce(
-                lambda acc, kv: ("\n".join([acc[0], _source_metadata_to_tsv(kv[1])]), max(acc[1], len(kv[1].text))),
-                iterator, ("", 0))
+            csv, max_len, count = reduce(
+                lambda acc, kv: (
+                "\n".join([acc[0], source_metadata_to_tsv(kv[1])]), max(acc[1], len(kv[1].text)), acc[2] + 1),
+                iterator, ("", 0, 0))
             filename = f"blizzard2012-source-metadata-{splitIndex:03d}.tsv"
             filepath = os.path.join(self.out_dir, filename)
             with open(filepath, mode="w") as f:
                 f.write(csv)
-            yield csv.count("\n") + 1, max_len
+            yield count, max_len
 
         return rdd.sortByKey().mapPartitionsWithIndex(
             map_fn, preservesPartitioning=True).fold(
@@ -103,14 +80,15 @@ class Blizzard2012(Corpus):
 
     def aggregate_target_metadata(self, rdd: RDD):
         def map_fn(splitIndex, iterator):
-            csv, max_len = reduce(
-                lambda acc, kv: ("\n".join([acc[0], _target_metadata_to_tsv(kv[1])]), max(acc[1], kv[1].n_frames)),
-                iterator, ("", 0))
+            csv, max_len, count = reduce(
+                lambda acc, kv: (
+                    "\n".join([acc[0], target_metadata_to_tsv(kv[1])]), max(acc[1], kv[1].n_frames), acc[2] + 1),
+                iterator, ("", 0, 0))
             filename = f"blizzard2012-target-metadata-{splitIndex:03d}.tsv"
             filepath = os.path.join(self.out_dir, filename)
             with open(filepath, mode="w") as f:
                 f.write(csv)
-            yield csv.count("\n") + 1, max_len
+            yield count, max_len
 
         return rdd.sortByKey().mapPartitionsWithIndex(
             map_fn, preservesPartitioning=True).fold(
@@ -150,7 +128,7 @@ class Blizzard2012(Corpus):
         return (start, end)
 
     def _text_to_sequence(self, text):
-        sequence = [ord(c) for c in text] + [_eos]
+        sequence = [ord(c) for c in text] + [eos]
         sequence = np.array(sequence, dtype=np.int64)
         return sequence
 
