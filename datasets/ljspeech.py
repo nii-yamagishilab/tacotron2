@@ -15,6 +15,36 @@ class LJSpeech(Corpus):
         self.in_dir = in_dir
         self.out_dir = out_dir
 
+    @property
+    def training_source_files(self):
+        return [os.path.join(self.out_dir, f"ljspeech-source-{record_id:05d}.tfrecord") for record_id in
+                range(1101, 13101)]
+
+    @property
+    def training_target_files(self):
+        return [os.path.join(self.out_dir, f"ljspeech-target-{record_id:05d}.tfrecord") for record_id in
+                range(1101, 13101)]
+
+    @property
+    def validation_source_files(self):
+        return [os.path.join(self.out_dir, f"ljspeech-source-{record_id:05d}.tfrecord") for record_id in
+                range(101, 1101)]
+
+    @property
+    def validation_target_files(self):
+        return [os.path.join(self.out_dir, f"ljspeech-target-{record_id:05d}.tfrecord") for record_id in
+                range(101, 1101)]
+
+    @property
+    def test_source_files(self):
+        return [os.path.join(self.out_dir, f"ljspeech-source-{record_id:05d}.tfrecord") for record_id in
+                range(1, 101)]
+
+    @property
+    def test_target_files(self):
+        return [os.path.join(self.out_dir, f"ljspeech-target-{record_id:05d}.tfrecord") for record_id in
+                range(1, 101)]
+
     def text_and_path_rdd(self, sc: SparkContext):
         return sc.parallelize(
             self._extract_all_text_and_path())
