@@ -65,7 +65,7 @@ class LJSpeech(Corpus):
 
     def _extract_all_text_and_path(self):
         index = 1
-        with open(os.path.join(self.in_dir, 'metadata.csv'), mode='r') as f:
+        with open(os.path.join(self.in_dir, 'metadata.csv'), mode='r', encoding='utf-8') as f:
             for line in f:
                 extracted = self._extract_text_and_path(line, index)
                 if extracted is not None:
