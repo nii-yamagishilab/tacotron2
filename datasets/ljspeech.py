@@ -73,6 +73,7 @@ class LJSpeech(Corpus):
                     index += 1
 
     def _text_to_sequence(self, text):
+        text = text.upper() if hparams.convert_to_upper else text
         sequence = [ord(c) for c in text] + [eos]
         sequence = np.array(sequence, dtype=np.int64)
         return sequence

@@ -13,6 +13,7 @@ hparams = tf.contrib.training.HParams(
 
     # Dataset
     num_symbols=126, # ord('~')
+    convert_to_upper=True,
 
     # Model:
     outputs_per_step=5,
