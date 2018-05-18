@@ -33,7 +33,7 @@ class LJSpeech(Corpus):
                 iterator, ("", 0, 0))
             filename = f"ljspeech-source-metadata-{splitIndex:03d}.tsv"
             filepath = os.path.join(self.out_dir, filename)
-            with open(filepath, mode="w") as f:
+            with open(filepath, mode="w", encoding='utf-8') as f:
                 f.write(csv)
             yield count, max_len
 
