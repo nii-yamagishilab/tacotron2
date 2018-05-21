@@ -26,7 +26,7 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
 
         dataset = DatasetSource(source, target, hparams)
         batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
-            hparams.batch_size).group_by_batch()
+            hparams.suffle_buffer_size).group_by_batch()
         return batched.dataset
 
     def eval_input_fn():
@@ -35,7 +35,7 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
 
         dataset = DatasetSource(source, target, hparams)
         dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
-            hparams.num_evaluation_steps).group_by_batch(batch_size=1)
+            hparams.eval_suffle_buffer_size).group_by_batch(batch_size=1)
         return dataset.dataset
 
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,
