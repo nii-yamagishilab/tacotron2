@@ -55,8 +55,8 @@ hparams = tf.contrib.training.HParams(
     log_step_count_steps=1,
     alignment_save_steps=100,
     approx_min_target_length=100,
-    suffle_buffer_size=320,
-    batch_bucket_width=40,
+    suffle_buffer_size=500,
+    batch_bucket_width=50,
     batch_num_buckets=50,
 
     # Eval:
@@ -65,7 +65,7 @@ hparams = tf.contrib.training.HParams(
     power=1.5, # Power to raise magnitudes to prior to Griffin-Lim
     num_evaluation_steps=32,
     eval_start_delay_secs=1800,
-    eval_throttle_secs=600,
+    eval_throttle_secs=900,
     eval_suffle_buffer_size=1000,
 )
 
