@@ -13,6 +13,7 @@ Options:
 from docopt import docopt
 import tensorflow as tf
 import importlib
+from random import shuffle
 from datasets.dataset import DatasetSource
 from tacotron.models import SingleSpeakerTacotronV1Model
 from hparams import hparams, hparams_debug_string
@@ -21,8 +22,10 @@ from hparams import hparams, hparams_debug_string
 def train_and_evaluate(hparams, model_dir, train_source_files, train_target_files, eval_source_files,
                        eval_target_files):
     def train_input_fn():
-        source = tf.data.TFRecordDataset(list(train_source_files))
-        target = tf.data.TFRecordDataset(list(train_target_files))
+        source_and_target_files = list(zip(train_source_files, train_target_files))
+        shuffle(source_and_target_files)
+        source = tf.data.TFRecordDataset([s for s, _ in source_and_target_files])
+        target = tf.data.TFRecordDataset([t for _, t in source_and_target_files])
 
         dataset = DatasetSource(source, target, hparams)
         batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
@@ -30,12 +33,13 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
         return batched.dataset
 
     def eval_input_fn():
-        source = tf.data.TFRecordDataset(list(eval_source_files))
-        target = tf.data.TFRecordDataset(list(eval_target_files))
+        source_and_target_files = list(zip(eval_source_files, eval_target_files))
+        shuffle(source_and_target_files)
+        source = tf.data.TFRecordDataset([s for s, _ in source_and_target_files])
+        target = tf.data.TFRecordDataset([t for _, t in source_and_target_files])
 
         dataset = DatasetSource(source, target, hparams)
-        dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
-            hparams.eval_suffle_buffer_size).group_by_batch(batch_size=1)
+        dataset = dataset.prepare_and_zip().filter_by_max_output_length().repeat().group_by_batch(batch_size=1)
         return dataset.dataset
 
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,

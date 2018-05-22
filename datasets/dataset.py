@@ -66,7 +66,11 @@ class DatasetSource:
         return self._hparams
 
     def prepare_and_zip(self):
-        zipped = tf.data.Dataset.zip((self._prepare_source(), self._prepare_target()))
+        def assert_id(source, target):
+            with tf.control_dependencies([tf.assert_equal(source.id, target.id)]):
+                return (source, target)
+
+        zipped = tf.data.Dataset.zip((self._prepare_source(), self._prepare_target())).map(assert_id)
         return ZippedDataset(zipped, self.hparams)
 
     def _prepare_source(self):
