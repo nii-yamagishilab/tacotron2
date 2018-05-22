@@ -13,27 +13,30 @@ Options:
 from docopt import docopt
 import tensorflow as tf
 import importlib
+from random import shuffle
 from datasets.dataset import PostNetDatasetSource
 from tacotron.models import TacotronV1PostNetModel
 from hparams import hparams, hparams_debug_string
 
 
-def train_and_evaluate(hparams, model_dir, train_source_files, train_target_files, eval_source_files,
-                       eval_target_files):
+def train_and_evaluate(hparams, model_dir, train_target_files, eval_target_files):
     def train_input_fn():
-        target = tf.data.TFRecordDataset(list(train_target_files))
+        shuffled_train_target_files = list(train_target_files)
+        shuffle(shuffled_train_target_files)
+        target = tf.data.TFRecordDataset([t for t in shuffled_train_target_files])
 
         dataset = PostNetDatasetSource(target, hparams)
         batched = dataset.create_source_and_target().filter_by_max_output_length().repeat().shuffle(
-            hparams.batch_size).group_by_batch()
+            hparams.suffle_buffer_size).group_by_batch()
         return batched.dataset
 
     def eval_input_fn():
-        target = tf.data.TFRecordDataset(list(eval_target_files))
+        shuffled_eval_target_files = list(eval_target_files)
+        shuffle(shuffled_eval_target_files)
+        target = tf.data.TFRecordDataset([t for t in shuffled_eval_target_files])
 
         dataset = PostNetDatasetSource(target, hparams)
-        dataset = dataset.create_source_and_target().filter_by_max_output_length().repeat().shuffle(
-            hparams.num_evaluation_steps).group_by_batch(batch_size=1)
+        dataset = dataset.create_source_and_target().filter_by_max_output_length().repeat().group_by_batch(batch_size=1)
         return dataset.dataset
 
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,
@@ -65,9 +68,7 @@ def main():
     tf.logging.set_verbosity(tf.logging.INFO)
     train_and_evaluate(hparams,
                        checkpoint_dir,
-                       corpus_instance.training_source_files,
                        corpus_instance.training_target_files,
-                       corpus_instance.validation_source_files,
                        corpus_instance.validation_target_files)
 
 
