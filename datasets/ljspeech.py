@@ -1,7 +1,7 @@
 from pyspark import SparkContext, RDD
 import numpy as np
 import os
-from collections import namedtuple
+import random
 from util import audio, tfrecord
 from hparams import hparams
 from datasets.corpus import Corpus, TargetMetaData, SourceMetaData, TextAndPath, target_metadata_to_tsv, \
@@ -14,36 +14,77 @@ class LJSpeech(Corpus):
     def __init__(self, in_dir, out_dir):
         self.in_dir = in_dir
         self.out_dir = out_dir
+        print(in_dir, out_dir)
+
+    @property
+    def record_ids(self):
+        return map(lambda v: str(v), range(1, 13101))
+
+    def record_file_path(self, record_id, kind):
+        assert kind in ["source", "target"]
+        return os.path.join(self.out_dir, f"ljspeech-{kind}-{int(record_id):05d}.tfrecord")
+
+    @property
+    def training_record_num(self):
+        return 12000
+
+    @property
+    def validation_record_num(self):
+        return 1000
+
+    @property
+    def test_record_num(self):
+        return 100
 
     @property
     def training_source_files(self):
-        return [os.path.join(self.out_dir, f"ljspeech-source-{record_id:05d}.tfrecord") for record_id in
-                range(1101, 13101)]
+        with open(self.training_list_filepath, mode="r") as f:
+            return [self.record_file_path(record_id, "source") for record_id in f]
 
     @property
     def training_target_files(self):
-        return [os.path.join(self.out_dir, f"ljspeech-target-{record_id:05d}.tfrecord") for record_id in
-                range(1101, 13101)]
+        with open(self.training_list_filepath, mode="r") as f:
+            return [self.record_file_path(record_id, "target") for record_id in f]
 
     @property
     def validation_source_files(self):
-        return [os.path.join(self.out_dir, f"ljspeech-source-{record_id:05d}.tfrecord") for record_id in
-                range(101, 1101)]
+        with open(self.validation_list_filepath, mode="r") as f:
+            return [self.record_file_path(record_id, "source") for record_id in f]
 
     @property
     def validation_target_files(self):
-        return [os.path.join(self.out_dir, f"ljspeech-target-{record_id:05d}.tfrecord") for record_id in
-                range(101, 1101)]
+        with open(self.validation_list_filepath, mode="r") as f:
+            return [self.record_file_path(record_id, "target") for record_id in f]
 
     @property
     def test_source_files(self):
-        return [os.path.join(self.out_dir, f"ljspeech-source-{record_id:05d}.tfrecord") for record_id in
-                range(1, 101)]
+        with open(self.test_list_filepath, mode="r") as f:
+            return [self.record_file_path(record_id, "source") for record_id in f]
 
     @property
     def test_target_files(self):
-        return [os.path.join(self.out_dir, f"ljspeech-target-{record_id:05d}.tfrecord") for record_id in
-                range(1, 101)]
+        with open(self.test_list_filepath, mode="r") as f:
+            return [self.record_file_path(record_id, "target") for record_id in f]
+
+    @property
+    def training_list_filepath(self):
+        return os.path.join(self.out_dir, "training_list.txt")
+
+    @property
+    def validation_list_filepath(self):
+        return os.path.join(self.out_dir, "validation_list.txt")
+
+    @property
+    def test_list_filepath(self):
+        return os.path.join(self.out_dir, "test_list.txt")
+
+    def random_sample(self):
+        ids = set(self.record_ids)
+        validation_and_test = set(random.sample(ids, self.validation_record_num + self.test_record_num))
+        test = set(random.sample(validation_and_test, self.test_record_num))
+        validation = validation_and_test - test
+        training = ids - validation_and_test
+        return training, validation, test
 
     def text_and_path_rdd(self, sc: SparkContext):
         return sc.parallelize(
