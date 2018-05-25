@@ -58,6 +58,8 @@ hparams = tf.contrib.training.HParams(
     suffle_buffer_size=320,
     batch_bucket_width=50,
     batch_num_buckets=50,
+    record_profile=False,
+    profile_steps=50,
 
     # Eval:
     max_iters=200,

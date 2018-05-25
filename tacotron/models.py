@@ -38,10 +38,10 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
             embedding_output = embedding(features.source)
             encoder_output = encoder(embedding_output)
             mel_output, stop_token, decoder_state = decoder(encoder_output,
-                                                is_training=is_training,
-                                                is_validation=is_validation,
-                                                memory_sequence_length=features.source_length,
-                                                target=target)
+                                                            is_training=is_training,
+                                                            is_validation=is_validation,
+                                                            memory_sequence_length=features.source_length,
+                                                            target=target)
             alignment = tf.transpose(decoder_state[0].alignment_history.stack(), [1, 2, 0])
 
             global_step = tf.train.get_global_step()
@@ -73,8 +73,13 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                    features.text,
                                                    params.alignment_save_steps,
                                                    mode, summary_writer)
+                    hooks = [alignment_saver]
+                    if params.record_profile:
+                        profileHook = tf.train.ProfilerHook(save_steps=params.profile_steps, output_dir=model_dir,
+                                                            show_dataflow=True, show_memory=True)
+                        hooks.append(profileHook)
                     return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op,
-                                                      training_hooks=[alignment_saver])
+                                                      training_hooks=hooks)
 
             if is_validation:
                 eval_metric_ops = self.get_validation_metrics(mel_loss, done_loss)
