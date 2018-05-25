@@ -82,13 +82,16 @@ class StopTokenBasedInferenceHelper(Helper):
 
 class ValidationHelper(Helper):
 
-    def __init__(self, targets, batch_size, output_dim, r, n_feed_frame=1):
+    def __init__(self, targets, batch_size, output_dim, r, n_feed_frame=1, teacher_forcing=False):
         assert n_feed_frame <= r
         self._batch_size = batch_size
         self._output_dim = output_dim
         self._end_token = tf.tile([0.0], [output_dim * r])
         self.n_feed_frame = n_feed_frame
         self.num_steps = tf.shape(targets)[1] // r
+        self.teacher_forcing = teacher_forcing
+        self._targets = tf.reshape(targets,
+                                   shape=tf.stack([self.batch_size, self.num_steps, tf.to_int32(output_dim * r)]))
 
     @property
     def batch_size(self):
@@ -112,7 +115,9 @@ class ValidationHelper(Helper):
     def next_inputs(self, time, outputs, state, sample_ids, name=None):
         output, done = outputs
         finished = (time + 1 >= self.num_steps)
-        next_inputs = output[:, -self._output_dim * self.n_feed_frame:]
+        next_inputs = self._targets[:, time,
+                      -self._output_dim * self.n_feed_frame:] if self.teacher_forcing else output[:,
+                                                                                           -self._output_dim * self.n_feed_frame:]
         next_inputs.set_shape([output.get_shape()[0].value, self._output_dim * self.n_feed_frame])
         return (finished, next_inputs, state)
 

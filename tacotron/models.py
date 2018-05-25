@@ -61,7 +61,7 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
 
                 gradients, variables = zip(*optimizer.compute_gradients(loss))
                 clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-                self.add_training_stats(mel_loss, done_loss, lr)
+                self.add_training_stats(loss, mel_loss, done_loss, lr)
                 # Add dependency on UPDATE_OPS; otherwise batchnorm won't work correctly. See:
                 # https://github.com/tensorflow/tensorflow/issues/1122
                 with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
@@ -82,7 +82,20 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                       training_hooks=hooks)
 
             if is_validation:
-                eval_metric_ops = self.get_validation_metrics(mel_loss, done_loss)
+                # validation with teacher forcing
+                mel_output_with_teacher, stop_token_with_teacher, _ = decoder(encoder_output,
+                                                                              is_training=is_training,
+                                                                              is_validation=is_validation,
+                                                                              memory_sequence_length=features.source_length,
+                                                                              target=target,
+                                                                              teacher_forcing=True)
+                mel_loss_with_teacher = self.spec_loss(mel_output_with_teacher, labels.mel,
+                                                       labels.spec_loss_mask)
+                done_loss_with_teacher = self.binary_loss(stop_token_with_teacher, labels.done, labels.binary_loss_mask)
+                loss_with_teacher = mel_loss_with_teacher + done_loss_with_teacher
+                eval_metric_ops = self.get_validation_metrics(mel_loss, done_loss, loss_with_teacher,
+                                                              mel_loss_with_teacher, done_loss_with_teacher)
+
                 summary_writer = tf.summary.FileWriter(model_dir)
                 alignment_saver = MetricsSaver([alignment], global_step, mel_output, labels.mel,
                                                labels.target_length,
@@ -127,21 +140,31 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
         return init_rate * warmup_steps ** 0.5 * tf.minimum(step * warmup_steps ** -1.5, step ** -0.5)
 
     @staticmethod
-    def add_training_stats(mel_loss, done_loss, learning_rate):
+    def add_training_stats(loss, mel_loss, done_loss, learning_rate):
+        if loss is not None:
+            tf.summary.scalar("loss_with_teacher", loss)
         if mel_loss is not None:
             tf.summary.scalar("mel_loss", mel_loss)
+            tf.summary.scalar("mel_loss_with_teacher", mel_loss)
         if done_loss is not None:
             tf.summary.scalar("done_loss", done_loss)
+            tf.summary.scalar("done_loss_with_teacher", done_loss)
         tf.summary.scalar("learning_rate", learning_rate)
         return tf.summary.merge_all()
 
     @staticmethod
-    def get_validation_metrics(mel_loss, done_loss):
+    def get_validation_metrics(mel_loss, done_loss, loss_with_teacher, mel_loss_with_teacher, done_loss_with_teacher):
         metrics = {}
         if mel_loss is not None:
             metrics["mel_loss"] = tf.metrics.mean(mel_loss)
         if done_loss is not None:
             metrics["done_loss"] = tf.metrics.mean(done_loss)
+        if loss_with_teacher is not None:
+            metrics["loss_with_teacher"] = tf.metrics.mean(loss_with_teacher)
+        if mel_loss_with_teacher is not None:
+            metrics["mel_loss_with_teacher"] = tf.metrics.mean(mel_loss_with_teacher)
+        if done_loss_with_teacher is not None:
+            metrics["done_loss_with_teacher"] = tf.metrics.mean(done_loss_with_teacher)
         return metrics
 
 

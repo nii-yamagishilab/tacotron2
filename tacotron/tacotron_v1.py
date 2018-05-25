@@ -128,7 +128,8 @@ class DecoderV1(tf.layers.Layer):
     def build(self, _):
         self.built = True
 
-    def call(self, source, is_training=None, is_validation=None, memory_sequence_length=None, target=None):
+    def call(self, source, is_training=None, is_validation=None, teacher_forcing=False, memory_sequence_length=None,
+             target=None):
         assert is_training is not None
 
         prenets = tuple([PreNet(out_unit, is_training, self._drop_rate)
@@ -146,7 +147,8 @@ class DecoderV1(tf.layers.Layer):
                                 self.outputs_per_step) if is_training \
             else ValidationHelper(target, batch_size,
                                   self.num_mels,
-                                  self.outputs_per_step) if is_validation \
+                                  self.outputs_per_step,
+                                  teacher_forcing=teacher_forcing) if is_validation \
             else StopTokenBasedInferenceHelper(batch_size,
                                                self.num_mels,
                                                self.outputs_per_step)
