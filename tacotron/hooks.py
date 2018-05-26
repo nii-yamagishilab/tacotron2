@@ -45,10 +45,11 @@ def write_postnet_training_result(global_step: int, ids: List[str], predicted_sp
     spec_width = ground_truth_spec[0].shape[1]
     padded_spec_length = [m.shape[0] for m in ground_truth_spec]
     predicted_spec_length = [m.shape[0] for m in predicted_spec]
+    ids_bytes = [s.encode("utf-8") for s in ids]
     example = tf.train.Example(features=tf.train.Features(feature={
         'global_step': int64_feature([global_step]),
         'batch_size': int64_feature([batch_size]),
-        'id': bytes_feature(ids),
+        'id': bytes_feature(ids_bytes),
         'predicted_spec': bytes_feature(raw_predicted_spec),
         'ground_truth_spec': bytes_feature(raw_ground_truth_spec),
         'spec_length': int64_feature(padded_spec_length),
