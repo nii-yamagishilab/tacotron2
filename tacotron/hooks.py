@@ -36,7 +36,7 @@ def write_training_result(global_step: int, id: List[int], text: List[str], pred
     write_tfrecord(example, filename)
 
 
-def write_postnet_training_result(global_step: int, id: List[int], predicted_spec: List[np.ndarray],
+def write_postnet_training_result(global_step: int, ids: List[str], predicted_spec: List[np.ndarray],
                                   ground_truth_spec: List[np.ndarray], spec_length: List[int],
                                   filename: str):
     batch_size = len(ground_truth_spec)
@@ -48,7 +48,7 @@ def write_postnet_training_result(global_step: int, id: List[int], predicted_spe
     example = tf.train.Example(features=tf.train.Features(feature={
         'global_step': int64_feature([global_step]),
         'batch_size': int64_feature([batch_size]),
-        'id': int64_feature(id),
+        'id': bytes_feature(ids),
         'predicted_spec': bytes_feature(raw_predicted_spec),
         'ground_truth_spec': bytes_feature(raw_ground_truth_spec),
         'spec_length': int64_feature(padded_spec_length),
@@ -135,10 +135,11 @@ class PostNetMetricsSaver(tf.train.SessionRunHook):
             global_step_value, predicted_specs, ground_truth_specs, mel_length, ids = run_context.session.run(
                 (self.global_step_tensor, self.predicted_spec_tensor,
                  self.ground_truth_spec_tensor, self.spec_length_tensor, self.id_tensor))
-            id_strings = ",".join([str(i) for i in ids])
+            ids = [str(i) for i in ids]
+            id_strings = ",".join(ids)
             result_filename = "{}_result_step{:09d}_{}.tfrecord".format(self.mode, global_step_value, id_strings)
             tf.logging.info("Saving a %s result for %d at %s", self.mode, global_step_value, result_filename)
-            write_postnet_training_result(global_step_value, list(ids), list(predicted_specs),
+            write_postnet_training_result(global_step_value, ids, list(predicted_specs),
                                           list(ground_truth_specs), list(mel_length),
                                           filename=os.path.join(self.writer.get_logdir(), result_filename))
             if self.mode == tf.estimator.ModeKeys.EVAL:
