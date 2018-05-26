@@ -146,7 +146,7 @@ class PostNetMetricsSaver(tf.train.SessionRunHook):
             if self.mode == tf.estimator.ModeKeys.EVAL:
                 for _id, pred_spec, gt_spec in zip(ids, predicted_specs,
                                                    ground_truth_specs):
-                    output_filename = "{}_result_step{:09d}_{:d}.png".format(self.mode,
-                                                                             global_step_value, _id)
+                    output_filename = "{}_result_step{:09d}_{}.png".format(self.mode,
+                                                                           global_step_value, _id)
                     plot_spec(gt_spec, pred_spec, _id, global_step_value,
                               os.path.join(self.writer.get_logdir(), "spec_" + output_filename))
