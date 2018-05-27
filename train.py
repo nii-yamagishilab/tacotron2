@@ -66,7 +66,7 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
 
 
 def get_parallelism(factor, min_value, max_value):
-    return min(max(cpu_count() * factor, min_value), max_value)
+    return min(max(int(cpu_count() * factor), min_value), max_value)
 
 
 def main():
