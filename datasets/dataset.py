@@ -53,6 +53,24 @@ class DatasetSource:
         self._target = target
         self._hparams = hparams
 
+    @staticmethod
+    def create_from_tfrecord_files(source_files, target_files, hparams, cycle_length=4,
+                                   buffer_output_elements=None,
+                                   prefetch_input_elements=None):
+        source = tf.data.Dataset.from_generator(lambda: source_files, tf.string, tf.TensorShape([]))
+        target = tf.data.Dataset.from_generator(lambda: target_files, tf.string, tf.TensorShape([]))
+        source = source.apply(tf.contrib.data.parallel_interleave(
+            lambda filename: tf.data.TFRecordDataset(filename),
+            cycle_length, sloppy=False,
+            buffer_output_elements=buffer_output_elements,
+            prefetch_input_elements=prefetch_input_elements))
+        target = target.apply(tf.contrib.data.parallel_interleave(
+            lambda filename: tf.data.TFRecordDataset(filename),
+            cycle_length, sloppy=False,
+            buffer_output_elements=buffer_output_elements,
+            prefetch_input_elements=prefetch_input_elements))
+        return DatasetSource(source, target, hparams)
+
     @property
     def source(self):
         return self._source
@@ -156,6 +174,10 @@ class DatasetBase:
     def repeat(self, count=None):
         return self.apply(self.dataset.repeat(count), self.hparams)
 
+    def shuffle_and_repeat(self, buffer_size, count=None):
+        dataset = self.dataset.apply(tf.contrib.data.shuffle_and_repeat(buffer_size, count))
+        return self.apply(dataset, self.hparams)
+
 
 class ZippedDataset(DatasetBase):
 
@@ -236,7 +258,7 @@ class ZippedDataset(DatasetBase):
 
 class BatchedDataset(DatasetBase):
 
-    def __init__(self, dataset, hparams):
+    def __init__(self, dataset: tf.data.Dataset, hparams):
         self._dataset = dataset
         self._hparams = hparams
 
@@ -250,6 +272,9 @@ class BatchedDataset(DatasetBase):
     @property
     def hparams(self):
         return self._hparams
+
+    def prefetch(self, buffer_size):
+        return self.apply(self.dataset.prefetch(buffer_size), self.hparams)
 
 
 class PostNetDatasetSource:

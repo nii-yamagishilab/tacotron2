@@ -58,6 +58,12 @@ hparams = tf.contrib.training.HParams(
     suffle_buffer_size=320,
     batch_bucket_width=50,
     batch_num_buckets=50,
+    interleave_cycle_length_cpu_factor=1,
+    interleave_cycle_length_min=4,
+    interleave_cycle_length_max=16,
+    interleave_buffer_output_elements=2,
+    interleave_prefetch_input_elements=2,
+    prefetch_buffer_size=4,
     record_profile=False,
     profile_steps=50,
 

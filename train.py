@@ -14,6 +14,7 @@ from docopt import docopt
 import tensorflow as tf
 import importlib
 from random import shuffle
+from multiprocessing import cpu_count
 from datasets.dataset import DatasetSource
 from tacotron.models import SingleSpeakerTacotronV1Model
 from hparams import hparams, hparams_debug_string
@@ -21,15 +22,24 @@ from hparams import hparams, hparams_debug_string
 
 def train_and_evaluate(hparams, model_dir, train_source_files, train_target_files, eval_source_files,
                        eval_target_files):
+    interleave_parallelism = get_parallelism(hparams.interleave_cycle_length_cpu_factor,
+                                             hparams.interleave_cycle_length_min,
+                                             hparams.interleave_cycle_length_max)
+
+    tf.logging.info("Interleave parallelism is %d.", interleave_parallelism)
+
     def train_input_fn():
         source_and_target_files = list(zip(train_source_files, train_target_files))
         shuffle(source_and_target_files)
-        source = tf.data.TFRecordDataset([s for s, _ in source_and_target_files])
-        target = tf.data.TFRecordDataset([t for _, t in source_and_target_files])
+        source = (s for s, _ in source_and_target_files)
+        target = (t for _, t in source_and_target_files)
 
-        dataset = DatasetSource(source, target, hparams)
-        batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat().shuffle(
-            hparams.suffle_buffer_size).group_by_batch()
+        dataset = DatasetSource.create_from_tfrecord_files(source, target, hparams,
+                                                           cycle_length=interleave_parallelism,
+                                                           buffer_output_elements=hparams.interleave_buffer_output_elements,
+                                                           prefetch_input_elements=hparams.interleave_prefetch_input_elements)
+        batched = dataset.prepare_and_zip().filter_by_max_output_length().shuffle_and_repeat(
+            hparams.suffle_buffer_size).group_by_batch().prefetch(hparams.prefetch_buffer_size)
         return batched.dataset
 
     def eval_input_fn():
@@ -53,6 +63,10 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
                                       start_delay_secs=hparams.eval_start_delay_secs)
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+
+
+def get_parallelism(factor, min_value, max_value):
+    return min(max(cpu_count() * factor, min_value), max_value)
 
 
 def main():
