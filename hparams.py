@@ -16,13 +16,14 @@ hparams = tf.contrib.training.HParams(
     convert_to_upper=True,
 
     # Model:
-    outputs_per_step=5,
-    drop_rate=0.5,
+    outputs_per_step=2,
+    n_feed_frame=2,
 
     ## Embedding
     embedding_dim=256,
 
     ## Encoder V1
+    encoder_prenet_drop_rate=0.5,
     cbhg_out_units=256,
     conv_channels=128,
     max_filter_width=16,
@@ -32,6 +33,7 @@ hparams = tf.contrib.training.HParams(
     encoder_prenet_out_units=(256, 128),
 
     ## Decoder V1
+    decoder_prenet_drop_rate=0.5,
     decoder_prenet_out_units=(256, 128),
     attention_out_units=256,
     decoder_out_units=256,
@@ -55,7 +57,7 @@ hparams = tf.contrib.training.HParams(
     log_step_count_steps=1,
     alignment_save_steps=100,
     approx_min_target_length=100,
-    suffle_buffer_size=320,
+    suffle_buffer_size=64,
     batch_bucket_width=50,
     batch_num_buckets=50,
     interleave_cycle_length_cpu_factor=1.0,
@@ -68,7 +70,7 @@ hparams = tf.contrib.training.HParams(
     profile_steps=50,
 
     # Eval:
-    max_iters=200,
+    max_iters=500,
     griffin_lim_iters=60,
     power=1.5, # Power to raise magnitudes to prior to Griffin-Lim
     num_evaluation_steps=32,

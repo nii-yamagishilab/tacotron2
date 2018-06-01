@@ -23,15 +23,16 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                 projection2_out_channels=params.projection2_out_channels,
                                 num_highway=params.num_highway,
                                 prenet_out_units=params.encoder_prenet_out_units,
-                                drop_rate=params.drop_rate)
+                                drop_rate=params.encoder_prenet_drop_rate)
 
             decoder = DecoderV1(prenet_out_units=params.decoder_prenet_out_units,
-                                drop_rate=params.drop_rate,
+                                drop_rate=params.decoder_prenet_drop_rate,
                                 attention_out_units=params.attention_out_units,
                                 decoder_out_units=params.decoder_out_units,
                                 num_mels=params.num_mels,
                                 outputs_per_step=params.outputs_per_step,
-                                max_iters=params.max_iters)
+                                max_iters=params.max_iters,
+                                n_feed_frame=params.n_feed_frame)
 
             target = labels.mel if (is_training or is_validation) else None
 

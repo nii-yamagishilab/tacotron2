@@ -24,7 +24,8 @@ class InferenceHelper(Helper):
         return tf.int32
 
     def initialize(self, name=None):
-        return (tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim))
+        return (
+        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -60,7 +61,8 @@ class StopTokenBasedInferenceHelper(Helper):
         return tf.int32
 
     def initialize(self, name=None):
-        return (tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim))
+        return (
+        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -106,7 +108,8 @@ class ValidationHelper(Helper):
         return tf.int32
 
     def initialize(self, name=None):
-        return (tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim))
+        return (
+        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -152,7 +155,8 @@ class TrainingHelper(Helper):
         return tf.int32
 
     def initialize(self, name=None):
-        return (tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim))
+        return (
+        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor

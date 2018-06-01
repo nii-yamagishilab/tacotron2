@@ -114,6 +114,7 @@ class DecoderV1(tf.layers.Layer):
                  num_mels=80,
                  outputs_per_step=2,
                  max_iters=200,
+                 n_feed_frame=1,
                  trainable=True, name=None, **kwargs):
         super(DecoderV1, self).__init__(name=name, trainable=trainable, **kwargs)
         self._prenet_out_units = prenet_out_units
@@ -124,6 +125,7 @@ class DecoderV1(tf.layers.Layer):
         self.outputs_per_step = outputs_per_step
         self.max_iters = max_iters
         self.stop_token_fc = tf.layers.Dense(1)
+        self.n_feed_frame = n_feed_frame
 
     def build(self, _):
         self.built = True
@@ -144,14 +146,17 @@ class DecoderV1(tf.layers.Layer):
 
         helper = TrainingHelper(target,
                                 self.num_mels,
-                                self.outputs_per_step) if is_training \
+                                self.outputs_per_step,
+                                n_feed_frame=self.n_feed_frame) if is_training \
             else ValidationHelper(target, batch_size,
                                   self.num_mels,
                                   self.outputs_per_step,
+                                  n_feed_frame=self.n_feed_frame,
                                   teacher_forcing=teacher_forcing) if is_validation \
             else StopTokenBasedInferenceHelper(batch_size,
                                                self.num_mels,
-                                               self.outputs_per_step)
+                                               self.outputs_per_step,
+                                               n_feed_frame=self.n_feed_frame)
 
         ((decoder_outputs, stop_token), _), final_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
             BasicDecoder(output_and_done_cell, helper, decoder_initial_state), maximum_iterations=self.max_iters)
