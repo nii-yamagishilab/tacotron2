@@ -38,6 +38,11 @@ hparams = tf.contrib.training.HParams(
     attention_out_units=256,
     decoder_out_units=256,
 
+    # Decoder V2
+    attention_kernel=31,
+    attention_filters=32,
+    cumulative_weights=True,
+
     ## Post net
     post_net_cbhg_out_units=256,
     post_net_conv_channels=128,

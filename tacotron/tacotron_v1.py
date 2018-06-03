@@ -1,8 +1,8 @@
 import tensorflow as tf
 from tensorflow.contrib.rnn import GRUCell, RNNCell, MultiRNNCell, OutputProjectionWrapper, ResidualWrapper
-from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention, AttentionWrapper
+from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention
 from tacotron.modules import PreNet, CBHG
-from tacotron.rnn_wrappers import DecoderPreNetWrapper, ConcatOutputAndAttentionWrapper, OutputAndStopTokenWrapper
+from tacotron.rnn_wrappers import OutputAndStopTokenWrapper, AttentionRNN
 from tacotron.helpers import StopTokenBasedInferenceHelper, TrainingHelper, ValidationHelper
 from functools import reduce
 from typing import Tuple
@@ -44,36 +44,10 @@ class EncoderV1(tf.layers.Layer):
         return self.cbhg.compute_output_shape(input_shape)
 
 
-class AttentionRNNV1(RNNCell):
-
-    def __init__(self, num_units, prenets: Tuple[PreNet],
-                 memory, memory_sequence_length,
-                 trainable=True, name=None, **kwargs):
-        super(AttentionRNNV1, self).__init__(name=name, trainable=trainable, **kwargs)
-        attention_cell = AttentionWrapper(
-            DecoderPreNetWrapper(GRUCell(num_units), prenets),
-            BahdanauAttention(num_units, memory, memory_sequence_length),
-            alignment_history=True,
-            output_attention=False)
-        concat_cell = ConcatOutputAndAttentionWrapper(attention_cell)
-        self._cell = concat_cell
-
-    @property
-    def state_size(self):
-        return self._cell.state_size
-
-    @property
-    def output_size(self):
-        return self._cell.output_size
-
-    def zero_state(self, batch_size, dtype):
-        return self._cell.zero_state(batch_size, dtype)
-
-    def compute_output_shape(self, input_shape):
-        return tf.TensorShape([input_shape[0], input_shape[1], self.output_size])
-
-    def call(self, inputs, state):
-        return self._cell(inputs, state)
+def AttentionRNNV1(num_units, prenets: Tuple[PreNet],
+                   memory, memory_sequence_length):
+    attention_mechanism = BahdanauAttention(num_units, memory, memory_sequence_length)
+    return AttentionRNN(num_units, prenets, attention_mechanism)
 
 
 class DecoderRNNV1(RNNCell):
