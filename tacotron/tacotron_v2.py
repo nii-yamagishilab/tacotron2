@@ -31,7 +31,7 @@ class LocationSensitiveAttention(BahdanauAttention):
                  attention_kernel,
                  attention_filters,
                  smoothing=False,
-                 cumulate_weights=True,
+                 cumulative_weights=True,
                  name="LocationSensitiveAttention"):
         probability_fn = self._smoothing_normalization if smoothing else None
 
@@ -41,7 +41,7 @@ class LocationSensitiveAttention(BahdanauAttention):
             memory_sequence_length=memory_sequence_length,
             probability_fn=probability_fn,
             name=name)
-        self._cumulate_weights = cumulate_weights
+        self._cumulative_weights = cumulative_weights
 
         self.location_convolution = tf.layers.Conv1D(filters=attention_filters,
                                                      kernel_size=attention_kernel,
@@ -73,7 +73,7 @@ class LocationSensitiveAttention(BahdanauAttention):
             energy = _location_sensitive_score(processed_query, processed_location_features, self.keys)
 
         alignments = self._probability_fn(energy, state)
-        if self._cumulate_weights:
+        if self._cumulative_weights:
             next_state = alignments + previous_alignments
         else:
             next_state = alignments
@@ -89,7 +89,7 @@ def AttentionRNNV2(num_units,
                    attention_kernel,
                    attention_filters,
                    smoothing=False,
-                   cumulate_weights=True):
+                   cumulative_weights=True):
     attention_mechanism = LocationSensitiveAttention(num_units, memory, memory_sequence_length,
-                                                     attention_kernel, attention_filters, smoothing, cumulate_weights)
+                                                     attention_kernel, attention_filters, smoothing, cumulative_weights)
     return AttentionRNN(num_units, prenets, attention_mechanism)
