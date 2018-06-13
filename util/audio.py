@@ -29,10 +29,15 @@ def spectrogram(y):
     return _normalize(S)
 
 
+def inv_amp_tf(spectrogram):
+    S = _db_to_amp_tf(_denormalize_tf(spectrogram) + hparams.ref_level_db)
+    return S
+
+
 def inv_spectrogram_tf(spectrogram):
     '''Builds computational graph to convert spectrogram to waveform using TensorFlow.
     '''
-    S = _db_to_amp_tf(_denormalize_tf(spectrogram) + hparams.ref_level_db)
+    S = inv_amp_tf(spectrogram)
     return _griffin_lim_tf(tf.pow(S, hparams.power))
 
 
