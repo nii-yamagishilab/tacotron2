@@ -2,7 +2,8 @@ from pyspark import SparkContext, RDD
 import numpy as np
 import os
 import random
-from util import audio, tfrecord
+from util import tfrecord
+from util.audio import Audio
 from hparams import hparams
 from datasets.corpus import Corpus, TargetMetaData, SourceMetaData, TextAndPath, target_metadata_to_tsv, \
     source_metadata_to_tsv, eos
@@ -14,7 +15,7 @@ class LJSpeech(Corpus):
     def __init__(self, in_dir, out_dir):
         self.in_dir = in_dir
         self.out_dir = out_dir
-        print(in_dir, out_dir)
+        self.audio = Audio(hparams)
 
     @property
     def record_ids(self):
@@ -150,10 +151,10 @@ class LJSpeech(Corpus):
         return sequence
 
     def _process_target(self, paths: TextAndPath):
-        wav = audio.load_wav(paths.wav_path)
-        spectrogram = audio.spectrogram(wav).astype(np.float32)
+        wav = self.audio.load_wav(paths.wav_path)
+        spectrogram = self.audio.spectrogram(wav).astype(np.float32)
         n_frames = spectrogram.shape[1]
-        mel_spectrogram = audio.melspectrogram(wav).astype(np.float32)
+        mel_spectrogram = self.audio.melspectrogram(wav).astype(np.float32)
         filename = f"ljspeech-target-{paths.id:05d}.tfrecord"
         filepath = os.path.join(self.out_dir, filename)
         tfrecord.write_preprocessed_target_data(paths.id, spectrogram.T, mel_spectrogram.T, filepath)

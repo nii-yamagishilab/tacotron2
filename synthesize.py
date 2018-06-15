@@ -18,12 +18,15 @@ import os
 from datasets.dataset import DatasetSource, PostNetDatasetSource, PredictedMel
 from tacotron.models import SingleSpeakerTacotronV1Model, TacotronV1PostNetModel
 from hparams import hparams, hparams_debug_string
-from util.audio import save_wav
+from util.audio import Audio
 
 
 def predict(hparams,
             model_dir, postnet_model_dir,
             test_source_files, test_target_files):
+
+    audio = Audio(hparams)
+
     def predict_input_fn():
         source = tf.data.TFRecordDataset(list(test_source_files))
         target = tf.data.TFRecordDataset(list(test_target_files))
@@ -55,7 +58,7 @@ def predict(hparams,
     for v in postnet_estimator.predict(predict_postnet_input_fn):
         filename = f"{v['id']}.wav"
         filepath = os.path.join(postnet_model_dir, filename)
-        save_wav(v["audio"], filepath)
+        audio.save_wav(v["audio"], filepath)
 
 
 def main():
