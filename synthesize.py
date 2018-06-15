@@ -53,7 +53,7 @@ def predict(hparams,
             prediction_dataset).expand_batch_dim()
         return batched.dataset
 
-    postnet_estimator = TacotronV1PostNetModel(hparams, postnet_model_dir)
+    postnet_estimator = TacotronV1PostNetModel(hparams, audio, postnet_model_dir)
 
     for v in postnet_estimator.predict(predict_postnet_input_fn):
         filename = f"{v['id']}.wav"
