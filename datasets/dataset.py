@@ -446,6 +446,9 @@ class PredictionDataset(DatasetBase):
                 mel=tf.TensorShape([None, self.hparams.num_mels]),
                 mel_width=tf.TensorShape([]),
                 target_length=tf.TensorShape([]),
+                alignment=tf.TensorShape([None, None]),
+                source=tf.TensorShape([None]),
+                text=tf.TensorShape([]),
             ), padding_values=SourceDataWithMelPrediction(
                 id=tf.to_int64(0),
                 spec=tf.to_float(0),
@@ -456,6 +459,9 @@ class PredictionDataset(DatasetBase):
                 mel=tf.to_float(0),
                 mel_width=tf.to_int64(0),
                 target_length=tf.to_int64(0),
+                alignment=tf.to_float(0),
+                source=tf.to_int64(0),
+                text="",
             ))
 
         batched = self.dataset.apply(tf.contrib.data.group_by_window(key_func,

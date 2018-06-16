@@ -46,7 +46,9 @@ def predict(hparams,
                                                                                       tf.float32,
                                                                                       tf.int64,
                                                                                       tf.int64,
-                                                                                      tf.float32))
+                                                                                      tf.float32,
+                                                                                      tf.int64,
+                                                                                      tf.string))
         target = tf.data.TFRecordDataset(list(test_target_files))
         dataset = PostNetDatasetSource(target, hparams)
         batched = dataset.create_source_and_target().filter_by_max_output_length().combine_with_prediction(
