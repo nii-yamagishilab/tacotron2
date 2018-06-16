@@ -24,7 +24,6 @@ from util.audio import Audio
 def predict(hparams,
             model_dir, postnet_model_dir,
             test_source_files, test_target_files):
-
     audio = Audio(hparams)
 
     def predict_input_fn():
@@ -37,7 +36,8 @@ def predict(hparams,
     estimator = SingleSpeakerTacotronV1Model(hparams, model_dir)
 
     predictions = map(
-        lambda p: PredictedMel(p["id"], p["mel"], p["mel"].shape[1], p["mel"].shape[0], p["alignment"]),
+        lambda p: PredictedMel(p["id"], p["mel"], p["mel"].shape[1], p["mel"].shape[0], p["alignment"], p["source"],
+                               p["text"]),
         estimator.predict(predict_input_fn))
 
     def predict_postnet_input_fn():
@@ -46,7 +46,9 @@ def predict(hparams,
                                                                                       tf.float32,
                                                                                       tf.int64,
                                                                                       tf.int64,
-                                                                                      tf.float32))
+                                                                                      tf.float32,
+                                                                                      tf.int64,
+                                                                                      tf.string))
         target = tf.data.TFRecordDataset(list(test_target_files))
         dataset = PostNetDatasetSource(target, hparams)
         batched = dataset.create_source_and_target().filter_by_max_output_length().combine_with_prediction(

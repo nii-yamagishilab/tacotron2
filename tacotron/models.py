@@ -113,6 +113,8 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                     "id": features.id,
                     "mel": mel_output,
                     "alignment": alignment,
+                    "source": features.source,
+                    "text": features.text,
                 })
 
         super(SingleSpeakerTacotronV1Model, self).__init__(
@@ -236,7 +238,13 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
                 return tf.estimator.EstimatorSpec(mode, predictions={
                     "id": features.id,
                     "spec": linear_output,
-                    "audio": self.audio.inv_spectrogram_tf(linear_output)
+                    "mel": features.mel,
+                    "ground_truth_spec": features.spec,
+                    "ground_truth_mel": features.ground_truth_mel,
+                    "alignment": features.alignment,
+                    "audio": self.audio.inv_spectrogram_tf(linear_output),
+                    "source": features.source,
+                    "text": features.text,
                 })
 
         super(TacotronV1PostNetModel, self).__init__(

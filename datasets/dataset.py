@@ -36,13 +36,14 @@ class SourceDataWithMelPrediction(
                ["id",
                 "spec", "spec_width",
                 "ground_truth_mel", "ground_truth_mel_width", "ground_truth_target_length",
-                "mel", "mel_width", "target_length"])):
+                "mel", "mel_width", "target_length", "alignment", "source", "text"])):
     pass
 
 
 class PredictedMel(
     namedtuple("PredictedMel",
-               ["id", "predicted_mel", "predicted_mel_width", "predicted_target_length", "alignment"])):
+               ["id", "predicted_mel", "predicted_mel_width", "predicted_target_length", "alignment", "source",
+                "text"])):
     pass
 
 
@@ -401,6 +402,9 @@ class PostNetPairedDataset(DatasetBase):
                 mel=prediction.predicted_mel,
                 mel_width=prediction.predicted_mel_width,
                 target_length=prediction.predicted_target_length,
+                alignment=prediction.alignment,
+                source=prediction.source,
+                text=prediction.text,
             )
             return source_with_prediction
 
@@ -442,6 +446,9 @@ class PredictionDataset(DatasetBase):
                 mel=tf.TensorShape([None, self.hparams.num_mels]),
                 mel_width=tf.TensorShape([]),
                 target_length=tf.TensorShape([]),
+                alignment=tf.TensorShape([None, None]),
+                source=tf.TensorShape([None]),
+                text=tf.TensorShape([]),
             ), padding_values=SourceDataWithMelPrediction(
                 id=tf.to_int64(0),
                 spec=tf.to_float(0),
@@ -452,6 +459,9 @@ class PredictionDataset(DatasetBase):
                 mel=tf.to_float(0),
                 mel_width=tf.to_int64(0),
                 target_length=tf.to_int64(0),
+                alignment=tf.to_float(0),
+                source=tf.to_int64(0),
+                text="",
             ))
 
         batched = self.dataset.apply(tf.contrib.data.group_by_window(key_func,
