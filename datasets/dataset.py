@@ -36,13 +36,14 @@ class SourceDataWithMelPrediction(
                ["id",
                 "spec", "spec_width",
                 "ground_truth_mel", "ground_truth_mel_width", "ground_truth_target_length",
-                "mel", "mel_width", "target_length", "alignment"])):
+                "mel", "mel_width", "target_length", "alignment", "source", "text"])):
     pass
 
 
 class PredictedMel(
     namedtuple("PredictedMel",
-               ["id", "predicted_mel", "predicted_mel_width", "predicted_target_length", "alignment"])):
+               ["id", "predicted_mel", "predicted_mel_width", "predicted_target_length", "alignment", "source",
+                "text"])):
     pass
 
 
@@ -402,6 +403,8 @@ class PostNetPairedDataset(DatasetBase):
                 mel_width=prediction.predicted_mel_width,
                 target_length=prediction.predicted_target_length,
                 alignment=prediction.alignment,
+                source=prediction.source,
+                text=prediction.text,
             )
             return source_with_prediction
 
