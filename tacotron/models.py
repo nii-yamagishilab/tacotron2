@@ -236,6 +236,10 @@ class TacotronV1PostNetModel(tf.estimator.Estimator):
                 return tf.estimator.EstimatorSpec(mode, predictions={
                     "id": features.id,
                     "spec": linear_output,
+                    "mel": features.mel,
+                    "ground_truth_spec": features.spec,
+                    "ground_truth_mel": features.ground_truth_mel,
+                    "alignment": features.alignment,
                     "audio": self.audio.inv_spectrogram_tf(linear_output)
                 })
 

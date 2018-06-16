@@ -36,7 +36,7 @@ class SourceDataWithMelPrediction(
                ["id",
                 "spec", "spec_width",
                 "ground_truth_mel", "ground_truth_mel_width", "ground_truth_target_length",
-                "mel", "mel_width", "target_length"])):
+                "mel", "mel_width", "target_length", "alignment"])):
     pass
 
 
@@ -401,6 +401,7 @@ class PostNetPairedDataset(DatasetBase):
                 mel=prediction.predicted_mel,
                 mel_width=prediction.predicted_mel_width,
                 target_length=prediction.predicted_target_length,
+                alignment=prediction.alignment,
             )
             return source_with_prediction
 
