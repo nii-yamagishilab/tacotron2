@@ -17,9 +17,12 @@ from random import shuffle
 from datasets.dataset import PostNetDatasetSource
 from tacotron.models import TacotronV1PostNetModel
 from hparams import hparams, hparams_debug_string
+from util.audio import Audio
 
 
 def train_and_evaluate(hparams, model_dir, train_target_files, eval_target_files):
+    audio = Audio(hparams)
+
     def train_input_fn():
         shuffled_train_target_files = list(train_target_files)
         shuffle(shuffled_train_target_files)
@@ -41,7 +44,7 @@ def train_and_evaluate(hparams, model_dir, train_target_files, eval_target_files
 
     run_config = tf.estimator.RunConfig(save_summary_steps=hparams.save_summary_steps,
                                         log_step_count_steps=hparams.log_step_count_steps)
-    estimator = TacotronV1PostNetModel(hparams, model_dir, config=run_config)
+    estimator = TacotronV1PostNetModel(hparams, audio, model_dir, config=run_config)
 
     train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn)
     eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn,

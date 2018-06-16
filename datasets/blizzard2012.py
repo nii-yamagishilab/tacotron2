@@ -1,7 +1,8 @@
 from pyspark import SparkContext, RDD
 import numpy as np
 import os
-from util import audio, tfrecord
+from util import tfrecord
+from util.audio import Audio
 from hparams import hparams
 from datasets.corpus import Corpus, TargetMetaData, SourceMetaData, TextAndPath, target_metadata_to_tsv, \
     source_metadata_to_tsv, eos
@@ -21,6 +22,7 @@ class Blizzard2012(Corpus):
         ]
         self._end_buffer = 0.05
         self._min_confidence = 90
+        self.audio = Audio(hparams)
 
     @property
     def training_source_files(self):
@@ -133,14 +135,14 @@ class Blizzard2012(Corpus):
         return sequence
 
     def _process_target(self, paths: TextAndPath):
-        wav = audio.load_wav(paths.wav_path)
+        wav = self.audio.load_wav(paths.wav_path)
         start_offset, end_offset = self._load_labels(paths.labels_path)
         start = int(start_offset * hparams.sample_rate)
         end = int(end_offset * hparams.sample_rate) if end_offset is not None else -1
         wav = wav[start:end]
-        spectrogram = audio.spectrogram(wav).astype(np.float32)
+        spectrogram = self.audio.spectrogram(wav).astype(np.float32)
         n_frames = spectrogram.shape[1]
-        mel_spectrogram = audio.melspectrogram(wav).astype(np.float32)
+        mel_spectrogram = self.audio.melspectrogram(wav).astype(np.float32)
         filename = f"blizzard2012-target-{paths.id:05d}.tfrecord"
         filepath = os.path.join(self.out_dir, filename)
         tfrecord.write_preprocessed_target_data(paths.id, spectrogram.T, mel_spectrogram.T, filepath)
