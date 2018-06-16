@@ -55,7 +55,7 @@ def plot_spec(spec, spec_predicted, _id, global_step, filename):
     plt.close()
 
 
-def plot_predictions(alignments, mel, mel_predicted, spec, spec_predicted, text, _id, global_step, filename):
+def plot_predictions(alignments, mel, mel_predicted, spec, spec_predicted, text, _id, filename):
     fig = plt.figure(figsize=(12, 24))
 
     num_alignment = len(alignments)
@@ -89,7 +89,7 @@ def plot_predictions(alignments, mel, mel_predicted, spec, spec_predicted, text,
                    origin="lower bottom", aspect="auto", cmap="magma", vmin=0.0, vmax=1.0)
     fig.colorbar(im, ax=ax)
 
-    fig.suptitle(f"record ID: {_id}\nglobal step: {global_step}\ninput text: {str(text)}")
+    fig.suptitle(f"record ID: {_id}\ninput text: {str(text)}")
 
     fig.savefig(filename, format='png')
     plt.close()
