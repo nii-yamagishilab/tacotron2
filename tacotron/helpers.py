@@ -76,7 +76,7 @@ class StopTokenBasedInferenceHelper(Helper):
         return (finished, next_inputs, state)
 
     def is_finished(self, done, time):
-        termination_criteria = tf.greater(done, 0.5)
+        termination_criteria = tf.greater(tf.nn.sigmoid(done), 0.5)
         minimum_requirement = tf.greater(time, self.min_iters)
         termination = tf.logical_and(termination_criteria, minimum_requirement)
         return tf.reduce_all(termination, axis=0)
