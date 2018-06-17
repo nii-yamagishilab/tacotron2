@@ -5,11 +5,12 @@ from functools import reduce
 
 class Embedding(tf.layers.Layer):
 
-    def __init__(self, num_symbols, embedding_dim,
+    def __init__(self, num_symbols, embedding_dim, index_offset=0,
                  trainable=True, name=None, **kwargs):
         super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
+        self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):
         self._embedding = self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim],
@@ -17,7 +18,7 @@ class Embedding(tf.layers.Layer):
         self.built = True
 
     def call(self, inputs, **kwargs):
-        return tf.nn.embedding_lookup(self._embedding, inputs)
+        return tf.nn.embedding_lookup(self._embedding, inputs - self.index_offset)
 
     def compute_output_shape(self, input_shape):
         return tf.TensorShape([input_shape[0], input_shape[1], self._embedding_dim])
