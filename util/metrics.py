@@ -81,13 +81,14 @@ def plot_predictions(alignments, mel, mel_predicted, spec, spec_predicted, text,
                    origin="lower bottom", aspect="auto", cmap="magma", vmin=0.0, vmax=1.0)
     fig.colorbar(im, ax=ax)
 
-    ax = fig.add_subplot(num_alignment + 4, 1, num_alignment + 3)
-    im = ax.imshow(spec.T, origin="lower bottom", aspect="auto", cmap="magma", vmin=0.0, vmax=1.0)
-    fig.colorbar(im, ax=ax)
-    ax = fig.add_subplot(num_alignment + 4, 1, num_alignment + 4)
-    im = ax.imshow(spec_predicted[:spec.shape[0], :].T,
-                   origin="lower bottom", aspect="auto", cmap="magma", vmin=0.0, vmax=1.0)
-    fig.colorbar(im, ax=ax)
+    if spec is not None and spec_predicted is not None:
+        ax = fig.add_subplot(num_alignment + 4, 1, num_alignment + 3)
+        im = ax.imshow(spec.T, origin="lower bottom", aspect="auto", cmap="magma", vmin=0.0, vmax=1.0)
+        fig.colorbar(im, ax=ax)
+        ax = fig.add_subplot(num_alignment + 4, 1, num_alignment + 4)
+        im = ax.imshow(spec_predicted[:spec.shape[0], :].T,
+                       origin="lower bottom", aspect="auto", cmap="magma", vmin=0.0, vmax=1.0)
+        fig.colorbar(im, ax=ax)
 
     fig.suptitle(f"record ID: {_id}\ninput text: {str(text)}")
 
