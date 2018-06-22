@@ -18,7 +18,9 @@ class Embedding(tf.layers.Layer):
         self.built = True
 
     def call(self, inputs, **kwargs):
-        return tf.nn.embedding_lookup(self._embedding, inputs - self.index_offset)
+        with tf.control_dependencies([tf.assert_greater_equal(inputs, self.index_offset),
+                                      tf.assert_less(inputs, self.index_offset + self._num_symbols)]):
+            return tf.nn.embedding_lookup(self._embedding, inputs - self.index_offset)
 
     def compute_output_shape(self, input_shape):
         return tf.TensorShape([input_shape[0], input_shape[1], self._embedding_dim])
