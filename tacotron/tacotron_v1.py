@@ -52,7 +52,7 @@ def AttentionRNNV1(num_units, prenets: Tuple[PreNet],
 
 class DecoderRNNV1(RNNCell):
 
-    def __init__(self, out_units, attention_cell: AttentionRNNV1,
+    def __init__(self, out_units, attention_cell: AttentionRNN,
                  trainable=True, name=None, **kwargs):
         super(DecoderRNNV1, self).__init__(name=name, trainable=trainable, **kwargs)
 

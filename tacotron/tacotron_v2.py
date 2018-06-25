@@ -1,7 +1,8 @@
 import tensorflow as tf
+from tensorflow.contrib.rnn import RNNCell, MultiRNNCell, OutputProjectionWrapper
 from tensorflow.contrib.seq2seq import BahdanauAttention
 from typing import Tuple
-from tacotron.modules import PreNet
+from tacotron.modules import PreNet, ZoneoutLSTMCell
 from tacotron.rnn_wrappers import AttentionRNN
 
 
@@ -93,3 +94,34 @@ def AttentionRNNV2(num_units,
     attention_mechanism = LocationSensitiveAttention(num_units, memory, memory_sequence_length,
                                                      attention_kernel, attention_filters, smoothing, cumulative_weights)
     return AttentionRNN(num_units, prenets, attention_mechanism)
+
+
+class DecoderRNNV2(RNNCell):
+
+    def __init__(self, out_units, attention_cell: AttentionRNN,
+                 is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0,
+                 trainable=True, name=None, **kwargs):
+        super(DecoderRNNV2, self).__init__(name=name, trainable=trainable, **kwargs)
+
+        self._cell = MultiRNNCell([
+            OutputProjectionWrapper(attention_cell, out_units),
+            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output),
+            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output),
+        ], state_is_tuple=True)
+
+    @property
+    def state_size(self):
+        return self._cell.state_size
+
+    @property
+    def output_size(self):
+        return self._cell.output_size
+
+    def zero_state(self, batch_size, dtype):
+        return self._cell.zero_state(batch_size, dtype)
+
+    def compute_output_shape(self, input_shape):
+        return tf.TensorShape([input_shape[0], input_shape[1], self.output_size])
+
+    def call(self, inputs, state):
+        return self._cell(inputs, state)
