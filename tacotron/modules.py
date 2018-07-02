@@ -84,7 +84,8 @@ class Conv1d(tf.layers.Layer):
                  trainable=True, name=None, **kwargs):
         super(Conv1d, self).__init__(name=name, trainable=trainable, **kwargs)
         self.is_training = is_training
-        self.conv1d = tf.layers.Conv1D(out_channels, kernel_size, activation=activation, padding="SAME")
+        self.activation = activation
+        self.conv1d = tf.layers.Conv1D(out_channels, kernel_size, use_bias=False, activation=None, padding="SAME")
 
     def build(self, _):
         self.built = True
@@ -92,7 +93,8 @@ class Conv1d(tf.layers.Layer):
     def call(self, inputs, **kwargs):
         conv1d = self.conv1d(inputs)
         batch_normalization = tf.layers.batch_normalization(conv1d, training=self.is_training)
-        return batch_normalization
+        output = self.activation(batch_normalization)
+        return output
 
     def compute_output_shape(self, input_shape):
         return self.conv1d.compute_output_shape(input_shape)
