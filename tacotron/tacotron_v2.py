@@ -1,8 +1,9 @@
 import tensorflow as tf
 from tensorflow.contrib.rnn import RNNCell, MultiRNNCell, OutputProjectionWrapper
 from tensorflow.contrib.seq2seq import BahdanauAttention
+from functools import reduce
 from typing import Tuple
-from tacotron.modules import PreNet, ZoneoutLSTMCell
+from tacotron.modules import PreNet, ZoneoutLSTMCell, Conv1d
 from tacotron.rnn_wrappers import AttentionRNN
 
 
@@ -125,3 +126,22 @@ class DecoderRNNV2(RNNCell):
 
     def call(self, inputs, state):
         return self._cell(inputs, state)
+
+
+class PostNetV2(tf.layers.Layer):
+
+    def __init__(self, num_postnet_layers, kernel_size, out_channels, is_training, drop_rate=0.5,
+                 trainable=True, name=None, **kwargs):
+        super(PostNetV2, self).__init__(name=name, trainable=trainable, **kwargs)
+
+        self.drop_rate = drop_rate
+        final_layer = Conv1d(kernel_size, out_channels, activation=None, is_training=is_training, use_bias=True,
+                             name=f"conv1d_{i}")
+
+        self.convolutions = [Conv1d(kernel_size, out_channels, activation=tf.nn.tanh, is_training=is_training,
+                                    name=f"conv1d_{i}") for i in
+                             range(1, num_postnet_layers)] + [final_layer]
+
+    def call(self, inputs, **kwargs):
+        output = reduce(lambda acc, conv: tf.layers.dropout(conv(acc), rate=self.drop_rate), self.convolutions, inputs)
+        return output

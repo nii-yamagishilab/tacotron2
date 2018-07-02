@@ -81,11 +81,12 @@ class HighwayNet(tf.layers.Layer):
 class Conv1d(tf.layers.Layer):
 
     def __init__(self, kernel_size, out_channels, activation, is_training,
+                 use_bias=False,
                  trainable=True, name=None, **kwargs):
         super(Conv1d, self).__init__(name=name, trainable=trainable, **kwargs)
         self.is_training = is_training
         self.activation = activation
-        self.conv1d = tf.layers.Conv1D(out_channels, kernel_size, use_bias=False, activation=None, padding="SAME")
+        self.conv1d = tf.layers.Conv1D(out_channels, kernel_size, use_bias=use_bias, activation=None, padding="SAME")
 
     def build(self, _):
         self.built = True
