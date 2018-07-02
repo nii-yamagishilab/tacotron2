@@ -136,7 +136,7 @@ class PostNetV2(tf.layers.Layer):
 
         self.drop_rate = drop_rate
         final_conv_layer = Conv1d(kernel_size, out_channels, activation=None, is_training=is_training,
-                                  name=f"conv1d_{i}")
+                                  name=f"conv1d_{num_postnet_layers}")
 
         self.convolutions = [Conv1d(kernel_size, out_channels, activation=tf.nn.tanh, is_training=is_training,
                                     name=f"conv1d_{i}") for i in

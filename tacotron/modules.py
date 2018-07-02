@@ -94,7 +94,7 @@ class Conv1d(tf.layers.Layer):
     def call(self, inputs, **kwargs):
         conv1d = self.conv1d(inputs)
         batch_normalization = tf.layers.batch_normalization(conv1d, training=self.is_training)
-        output = self.activation(batch_normalization)
+        output = self.activation(batch_normalization) if self.activation is not None else batch_normalization
         return output
 
     def compute_output_shape(self, input_shape):
