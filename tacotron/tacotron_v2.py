@@ -130,18 +130,22 @@ class DecoderRNNV2(RNNCell):
 
 class PostNetV2(tf.layers.Layer):
 
-    def __init__(self, num_postnet_layers, kernel_size, out_channels, is_training, drop_rate=0.5,
+    def __init__(self, out_units, num_postnet_layers, kernel_size, out_channels, is_training, drop_rate=0.5,
                  trainable=True, name=None, **kwargs):
         super(PostNetV2, self).__init__(name=name, trainable=trainable, **kwargs)
 
         self.drop_rate = drop_rate
-        final_layer = Conv1d(kernel_size, out_channels, activation=None, is_training=is_training, use_bias=True,
-                             name=f"conv1d_{i}")
+        final_conv_layer = Conv1d(kernel_size, out_channels, activation=None, is_training=is_training,
+                                  name=f"conv1d_{i}")
 
         self.convolutions = [Conv1d(kernel_size, out_channels, activation=tf.nn.tanh, is_training=is_training,
                                     name=f"conv1d_{i}") for i in
-                             range(1, num_postnet_layers)] + [final_layer]
+                             range(1, num_postnet_layers)] + [final_conv_layer]
+
+        self.projection_layer = tf.layers.Dense(out_units)
 
     def call(self, inputs, **kwargs):
         output = reduce(lambda acc, conv: tf.layers.dropout(conv(acc), rate=self.drop_rate), self.convolutions, inputs)
-        return output
+        projected = self.projection_layer(output)
+        summed = inputs + projected
+        return summed
