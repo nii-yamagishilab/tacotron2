@@ -61,6 +61,7 @@ class OutputAndStopTokenWrapper(RNNCell):
 
     def __init__(self, cell, out_units):
         super(OutputAndStopTokenWrapper, self).__init__()
+        self._out_units = out_units
         self._cell = cell
         self.out_projection = tf.layers.Dense(out_units)
         self.stop_token_projectioon = tf.layers.Dense(1)
@@ -71,7 +72,7 @@ class OutputAndStopTokenWrapper(RNNCell):
 
     @property
     def output_size(self):
-        return (self._cell.output_size, 1)
+        return (self._out_units, 1)
 
     def zero_state(self, batch_size, dtype):
         return self._cell.zero_state(batch_size, dtype)
