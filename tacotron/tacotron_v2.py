@@ -85,18 +85,6 @@ class LocationSensitiveAttention(BahdanauAttention):
         return tf.nn.sigmoid(e) / tf.reduce_sum(tf.nn.sigmoid(e), axis=-1, keep_dims=True)
 
 
-def AttentionRNNV2(num_units,
-                   prenets: Tuple[PreNet],
-                   memory, memory_sequence_length,
-                   attention_kernel,
-                   attention_filters,
-                   smoothing=False,
-                   cumulative_weights=True):
-    attention_mechanism = LocationSensitiveAttention(num_units, memory, memory_sequence_length,
-                                                     attention_kernel, attention_filters, smoothing, cumulative_weights)
-    return AttentionRNN(num_units, prenets, attention_mechanism)
-
-
 class DecoderRNNV2(RNNCell):
 
     def __init__(self, out_units, attention_cell: AttentionRNN,

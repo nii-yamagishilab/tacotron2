@@ -88,12 +88,12 @@ class OutputAndStopTokenWrapper(RNNCell):
 
 class AttentionRNN(RNNCell):
 
-    def __init__(self, num_units, prenets: Tuple[PreNet],
+    def __init__(self, cell, prenets: Tuple[PreNet],
                  attention_mechanism,
                  trainable=True, name=None, **kwargs):
         super(AttentionRNN, self).__init__(name=name, trainable=trainable, **kwargs)
         attention_cell = AttentionWrapper(
-            DecoderPreNetWrapper(GRUCell(num_units), prenets),
+            DecoderPreNetWrapper(cell, prenets),
             attention_mechanism,
             alignment_history=True,
             output_attention=False)
