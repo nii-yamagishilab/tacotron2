@@ -264,7 +264,7 @@ class BatchedDataset(DatasetBase):
         self._hparams = hparams
 
     def apply(self, dataset, hparams):
-        return BatchedDataset(self.dataset, self.hparams)
+        return BatchedDataset(dataset, hparams)
 
     @property
     def dataset(self):
