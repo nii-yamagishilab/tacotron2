@@ -65,7 +65,8 @@ class MetricsSaver(tf.train.SessionRunHook):
     def __init__(self, alignment_tensors, global_step_tensor, predicted_mel_tensor, ground_truth_mel_tensor,
                  mel_length_tensor, id_tensor,
                  text_tensor, save_steps,
-                 mode, writer: tf.summary.FileWriter):
+                 mode, writer: tf.summary.FileWriter,
+                 save_training_time_metrics=True):
         self.alignment_tensors = alignment_tensors
         self.global_step_tensor = global_step_tensor
         self.predicted_mel_tensor = predicted_mel_tensor
@@ -76,6 +77,7 @@ class MetricsSaver(tf.train.SessionRunHook):
         self.save_steps = save_steps
         self.mode = mode
         self.writer = writer
+        self.save_training_time_metrics = save_training_time_metrics
 
     def before_run(self, run_context):
         return tf.train.SessionRunArgs({
@@ -90,13 +92,14 @@ class MetricsSaver(tf.train.SessionRunHook):
             global_step_value, alignments, predicted_mels, ground_truth_mels, mel_length, ids, texts = run_context.session.run(
                 (self.global_step_tensor, self.alignment_tensors, self.predicted_mel_tensor,
                  self.ground_truth_mel_tensor, self.mel_length_tensor, self.id_tensor, self.text_tensor))
-            id_strings = ",".join([str(i) for i in ids])
-            result_filename = "{}_result_step{:09d}_{}.tfrecord".format(self.mode, global_step_value, id_strings)
-            tf.logging.info("Saving a %s result for %d at %s", self.mode, global_step_value, result_filename)
-            write_training_result(global_step_value, list(ids), list(texts), list(predicted_mels),
-                                  list(ground_truth_mels), list(mel_length),
-                                  alignments,
-                                  filename=os.path.join(self.writer.get_logdir(), result_filename))
+            if self.save_training_time_metrics:
+                id_strings = ",".join([str(i) for i in ids][:10])
+                result_filename = "{}_result_step{:09d}_{}.tfrecord".format(self.mode, global_step_value, id_strings)
+                tf.logging.info("Saving a %s result for %d at %s", self.mode, global_step_value, result_filename)
+                write_training_result(global_step_value, list(ids), list(texts), list(predicted_mels),
+                                      list(ground_truth_mels), list(mel_length),
+                                      alignments,
+                                      filename=os.path.join(self.writer.get_logdir(), result_filename))
             if self.mode == tf.estimator.ModeKeys.EVAL:
                 alignments = [[a[i] for a in alignments] for i in range(alignments[0].shape[0])]
                 for _id, text, align, pred_mel, gt_mel in zip(ids, texts, alignments, predicted_mels,
