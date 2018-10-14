@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib.rnn import GRUCell
 from functools import reduce
+from collections import namedtuple
 
 
 class Embedding(tf.layers.Layer):
@@ -169,10 +170,25 @@ class CBHG(tf.layers.Layer):
         return tf.TensorShape([input_shape[0], input_shape[1], self.out_units])
 
 
+class LSTMStateHistoryTuple(namedtuple("LSTMStateHistoryTuple", ["c", "h", "time", "c_history"])):
+
+    @property
+    def dtype(self):
+        (c, h) = self
+        if c.dtype != h.dtype:
+            raise TypeError("Inconsistent internal state: %s vs %s" %
+                            (str(c.dtype), str(h.dtype)))
+        return c.dtype
+
+
 class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
 
-    def __init__(self, num_units, is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0, state_is_tuple=True,
+    def __init__(self, num_units, is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0,
+                 state_is_tuple=True, c_history=True,  # ToDo: set c_history=False as default
                  name=None):
+        if not state_is_tuple:
+            raise NotImplementedError("non-tuple state is not implemented")
+
         zm = min(zoneout_factor_output, zoneout_factor_cell)
         zs = max(zoneout_factor_output, zoneout_factor_cell)
 
@@ -183,25 +199,31 @@ class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
         self._zoneout_cell = zoneout_factor_cell
         self._zoneout_outputs = zoneout_factor_output
         self.is_training = is_training
+        self.c_history = c_history
         self.state_is_tuple = state_is_tuple
 
     @property
     def state_size(self):
-        return self._cell.state_size
+        lstm_state_size = self._cell.state_size
+        c_history_size = lstm_state_size.c if self.c_history else ()
+        return LSTMStateHistoryTuple(lstm_state_size.c, lstm_state_size.h, tf.TensorShape([]), c_history_size)
 
     @property
     def output_size(self):
         return self._cell.output_size
 
-    def __call__(self, inputs, state, scope=None):
-        # Apply vanilla LSTM
-        output, new_state = self._cell(inputs, state, scope)
+    def zero_state(self, batch_size, dtype):
+        lstm_zero_state = self._cell.zero_state(batch_size, dtype)
+        return LSTMStateHistoryTuple(lstm_zero_state.c, lstm_zero_state.h,
+                                     0,
+                                     tf.TensorArray(dtype=dtype, size=self._cell.state_size.c, dynamic_size=True))
 
-        if self.state_is_tuple:
-            (prev_c, prev_h) = state
-            (new_c, new_h) = new_state
-        else:
-            raise NotImplementedError("non-tuple state is not implemented")
+    def __call__(self, inputs, state, scope=None):
+        (prev_c, prev_h, time, c_history) = state
+        # Apply vanilla LSTM
+        output, new_state = self._cell(inputs, tf.nn.rnn_cell.LSTMStateTuple(prev_c, prev_h), scope)
+
+        (new_c, new_h) = new_state
 
         # Apply zoneout
         keep_rate_cell = 1.0 - self._zoneout_cell
@@ -213,6 +235,8 @@ class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
             c = (1.0 - self._zoneout_cell) * new_c + self._zoneout_cell * prev_c
             h = (1.0 - self._zoneout_outputs) * new_h + self._zoneout_outputs * prev_h
 
-        new_state = tf.nn.rnn_cell.LSTMStateTuple(c, h) if self.state_is_tuple else tf.concat([c, h], axis=1)
+        c_history = c_history.write(time, c) if self.c_history else c_history
+        new_state = LSTMStateHistoryTuple(c, h, time + 1, c_history) if self.state_is_tuple else tf.concat([c, h],
+                                                                                                           axis=1)
 
         return output, new_state
