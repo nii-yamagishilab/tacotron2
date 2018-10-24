@@ -8,6 +8,7 @@
 - pyspark >= 2.3.0
 - librosa >= 0.6.1
 - scipy >= 1.1.1
+- matplotlib >= 2.2.2
 - hypothesis >= 3.59.1
 
 
