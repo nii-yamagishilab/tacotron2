@@ -1,12 +1,11 @@
-"""Trainining script for seq2seq text-to-speech synthesis model.
-Usage: train.py [options]
+"""Synthesis script for seq2seq text-to-speech synthesis model.
+Usage: synthesize.py [options]
 
 Options:
     --data-root=<dir>               Directory contains preprocessed features.
     --checkpoint-dir=<dir>          Directory where to save model checkpoints [default: checkpoints].
     --hparams=<parmas>              Hyper parameters. [default: ].
     --dataset=<name>                Dataset name.
-    --checkpoint=<path>             Restore model from checkpoint path if given.
     --postnet-checkpoint-dir=<path> Restore postnet model from checkpoint path if given.
     -h, --help                      Show this help message and exit
 """
