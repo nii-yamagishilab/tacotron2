@@ -111,6 +111,8 @@ Agiomyrgiannakis, and Yonghui Wu,  “Natural TTS synthesis
 by conditioning WaveNet on Mel spectrogram predictions,” in
 Proc. ICASSP
 , 2018, pp. 4779–4783
+- https://github.com/keithito/tacotron
+- https://github.com/Rayhane-mamah/Tacotron-2
 
 
 ## Licence

@@ -28,7 +28,23 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # ==============================================================================
-""" Tacotron2 modules. """
+# Copyright (c) 2018 Rayhane Mama
+#               2018 Modified by Yusuke Yasuda
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# ==============================================================================
+""" Tacotron2 modules.
+The implementation of location sensitive attention is from Rayhane-mamah's implementation.
+ https://github.com/Rayhane-mamah/Tacotron-2/blob/master/tacotron/models/attention.py
+ """
 
 import tensorflow as tf
 from tensorflow.contrib.rnn import RNNCell, MultiRNNCell, OutputProjectionWrapper
@@ -39,7 +55,6 @@ from tacotron.modules import PreNet, ZoneoutLSTMCell, Conv1d
 from tacotron.rnn_wrappers import AttentionRNN
 
 
-# https://github.com/Rayhane-mamah/Tacotron-2/blob/master/tacotron/models/attention.py
 def _location_sensitive_score(W_query, W_fill, W_keys):
     dtype = W_query.dtype
     num_units = W_keys.shape[-1].value or tf.shape(W_keys)[-1]
