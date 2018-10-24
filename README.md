@@ -1,10 +1,56 @@
 # Tacotron2
 
 
+## Requirements
+
+- Python >= 3.6
+- tensorflow >= 1.11
+- pyspark >= 2.3.0
+- librosa >= 0.6.1
+- scipy >= 1.1.1
+- hypothesis >= 3.59.1
+
+
+## Preprocessing
+
+```bash
+preprocess.py <dataset> </input/dataset/dir> </output/dataset/dir>
+```
+
+Currently available dataset are,
+
+- ljspeech
+- blizzard2012
+
+
+## Training
+
+For training Tacotron itself, run the following command.
+
+```bash
+train.py --dataset=<dataset> --data-root=</output/dataset/dir> --checkpoint-dir=</path/to/model/dir> --hparams=<parmas>
+```
+
+For training Post-net of Tacotron (Mel to linear spectrogram conversion), run the following command.
+
+```bash
+train_postnet.py --dataset=<dataset> --data-root=</output/dataset/dir> --checkpoint-dir=</path/to/postnet/model/dir> --hparams=<parmas>
+```
+
+See [Preprocessing](#Preprocessing) for available dataset.
 
 
 
-# How to use as an external library
+## Synthesis
+
+```bash
+synthesize.py  --dataset=<dataset> --data-root=</output/dataset/dir> --checkpoint-dir=</path/to/model/dir> --postnet-checkpoint-dir=</path/to/postnet/model/dir> --hparams=<parmas>
+
+```
+
+
+
+## How to use as an external library
 
 This implementation supports Bazel build. You can add this repository as a external dependency in your Bazel project.
 
