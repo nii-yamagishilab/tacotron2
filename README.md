@@ -93,8 +93,9 @@ Now you can import `tacotron2` package in your training script.
 - Yusuke Yasuda @TanUkkii007
 
 
-## Reference and resources
+## References and resources
 
+This is an implementation of the following papers.
 
 - Yuxuan  Wang,  R.J.  Skerry-Ryan,  Daisy  Stanton,  Yonghui
 Wu,  Ron  J.  Weiss,  Navdeep  Jaitly,  Zongheng  Yang,  Ying
@@ -111,9 +112,12 @@ Agiomyrgiannakis, and Yonghui Wu,  “Natural TTS synthesis
 by conditioning WaveNet on Mel spectrogram predictions,” in
 Proc. ICASSP
 , 2018, pp. 4779–4783
+
+This implementation is inspired from the following pioneers.
 - https://github.com/keithito/tacotron
 - https://github.com/Rayhane-mamah/Tacotron-2
 
+Thank for outstanding papers and implementations.
 
 ## Licence
 
