@@ -90,7 +90,7 @@ Now you can import `tacotron2` package in your training script.
 
 ## Authors
 
-- Yusuke Yasuda @TanUkkii007
+- Yusuke Yasuda (National Institute of Informatics, Japan) @TanUkkii007
 
 
 ## References and resources
