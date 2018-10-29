@@ -1,3 +1,10 @@
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" Models. """
+
 import tensorflow as tf
 from tacotron.modules import Embedding
 from tacotron.tacotron_v1 import EncoderV1, DecoderV1, PostNet

@@ -1,3 +1,10 @@
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" Tests about decoder at training and inference time. """
+
 import tensorflow as tf
 import numpy as np
 from hypothesis import given, settings, unlimited, assume, HealthCheck

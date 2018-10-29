@@ -1,3 +1,10 @@
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+
+
 """Generate record ID lists for training, validation, test.
 Usage: generate_training_list.py [options]
 

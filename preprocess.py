@@ -1,4 +1,10 @@
-# coding: utf-8
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+
+
 """
 Preprocess dataset
 usage: preprocess.py [options] <name> <in_dir> <out_dir>

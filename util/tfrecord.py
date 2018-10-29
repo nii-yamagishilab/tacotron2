@@ -1,3 +1,10 @@
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" Reading and writing TFRecord files """
+
 import tensorflow as tf
 import numpy as np
 from collections import namedtuple

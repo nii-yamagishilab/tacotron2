@@ -1,3 +1,24 @@
+# Copyright (c) 2017 Keith Ito
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" RNNWrappers.
+Modified from keithito's implementation.
+Reference: https://github.com/keithito/tacotron/blob/master/models/rnn_wrappers.py
+"""
+
 import tensorflow as tf
 from tensorflow.contrib.rnn import GRUCell, RNNCell
 from tensorflow.contrib.seq2seq import AttentionWrapper
@@ -98,6 +119,7 @@ class AttentionRNN(RNNCell):
             attention_mechanism,
             alignment_history=True,
             output_attention=False)
+        # ToDo: Remove ConcatOutputAndAttentionWrapper because AttentionWrapper already includes concatenation.
         concat_cell = ConcatOutputAndAttentionWrapper(attention_cell)
         self._cell = concat_cell
 

@@ -1,3 +1,42 @@
+# Copyright (c) 2017 Keith Ito
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# ==============================================================================
+# Copyright (c) 2018 Rayhane Mama
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" Basic building blocks.
+PreNet, HighwayNet and Conv1d is modified from keithito's implementation.
+Reference: https://github.com/keithito/tacotron/blob/master/models/modules.py
+
+ZoneoutLSTMCell is adopted from Rayhane-mamah's implementation.
+Reference: https://github.com/Rayhane-mamah/Tacotron-2/blob/master/tacotron/models/modules.py
+
+We are requesting to include an open source licence of Zoneout implementation to teganmaharaj
+https://github.com/teganmaharaj/zoneout/issues/8
+"""
+
 import tensorflow as tf
 from tensorflow.contrib.rnn import GRUCell
 from functools import reduce

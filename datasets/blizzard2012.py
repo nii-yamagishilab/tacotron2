@@ -1,3 +1,10 @@
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" Preprocess for Blizzard 2012. """
+
 from pyspark import SparkContext, RDD
 import numpy as np
 import os
@@ -68,7 +75,7 @@ class Blizzard2012(Corpus):
         def map_fn(splitIndex, iterator):
             csv, max_len, count = reduce(
                 lambda acc, kv: (
-                "\n".join([acc[0], source_metadata_to_tsv(kv[1])]), max(acc[1], len(kv[1].text)), acc[2] + 1),
+                    "\n".join([acc[0], source_metadata_to_tsv(kv[1])]), max(acc[1], len(kv[1].text)), acc[2] + 1),
                 iterator, ("", 0, 0))
             filename = f"blizzard2012-source-metadata-{splitIndex:03d}.tsv"
             filepath = os.path.join(self.out_dir, filename)

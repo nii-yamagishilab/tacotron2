@@ -1,3 +1,10 @@
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+""" Helpers. """
+
 import tensorflow as tf
 from tensorflow.contrib.seq2seq import Helper
 
@@ -25,7 +32,7 @@ class InferenceHelper(Helper):
 
     def initialize(self, name=None):
         return (
-        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -62,7 +69,7 @@ class StopTokenBasedInferenceHelper(Helper):
 
     def initialize(self, name=None):
         return (
-        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -109,7 +116,7 @@ class ValidationHelper(Helper):
 
     def initialize(self, name=None):
         return (
-        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -156,7 +163,7 @@ class TrainingHelper(Helper):
 
     def initialize(self, name=None):
         return (
-        tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor

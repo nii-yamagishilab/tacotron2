@@ -1,4 +1,10 @@
-# coding: utf-8
+# ==============================================================================
+# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Author: Yusuke Yasuda (yasuda@nii.ac.jp)
+# All rights reserved.
+# ==============================================================================
+
+
 """
 usage: visualize_alignment.py [options] <filename>
 
@@ -16,6 +22,7 @@ from hparams import hparams
 
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+
 
 class TrainingResult(
     namedtuple("TrainingResult",
@@ -43,15 +50,17 @@ def read_training_result(filename):
         alignment_target_length = example.features.feature['alignment_target_length'].int64_list.value
 
         texts = (t.decode('utf-8') for t in text)
-        alignments = [np.frombuffer(align, dtype=np.float32).reshape([batch_size, src_len, tgt_len]) for align, src_len, tgt_len in
+        alignments = [np.frombuffer(align, dtype=np.float32).reshape([batch_size, src_len, tgt_len]) for
+                      align, src_len, tgt_len in
                       zip(alignment, alignment_source_length, alignment_target_length)]
         alignments = [[a[i] for a in alignments] for i in range(batch_size)]
         predicted_mels = (np.frombuffer(mel, dtype=np.float32).reshape([mel_len, mel_width]) for mel, mel_len in
-                zip(predicted_mel, predicted_mel_length))
+                          zip(predicted_mel, predicted_mel_length))
         ground_truth_mels = (np.frombuffer(mel, dtype=np.float32).reshape([mel_len, mel_width]) for mel, mel_len in
-                zip(ground_truth_mel, mel_length))
+                             zip(ground_truth_mel, mel_length))
 
-        for id, text, align, pred_mel, gt_mel, mel_length in zip(id, texts, alignments, predicted_mels, ground_truth_mels, mel_length_without_padding):
+        for id, text, align, pred_mel, gt_mel, mel_length in zip(id, texts, alignments, predicted_mels,
+                                                                 ground_truth_mels, mel_length_without_padding):
             yield TrainingResult(
                 global_step=global_step,
                 id=id,
@@ -79,7 +88,7 @@ def save_alignment(alignments, text, mel_length, _id, path, info=None):
             xlabel += '\n\n' + info
         ax.set_xlabel(xlabel)
         ax.set_ylabel('Encoder timestep')
-        ax.set_title("layer {}".format(i+1))
+        ax.set_title("layer {}".format(i + 1))
         ax.hlines(len(text), xmin=0, xmax=mel_length // hparams.outputs_per_step, colors=['red'])
         ax.vlines(mel_length // hparams.outputs_per_step, ymin=0, ymax=len(text), colors=['red'])
     fig.subplots_adjust(wspace=0.4, hspace=0.6)
@@ -97,4 +106,5 @@ if __name__ == "__main__":
     output_filename = prefix + output_base_filename + "_{}.png"
 
     for result in read_training_result(filename):
-        save_alignment(result.alignments, result.text, result.mel_length, result.id, os.path.join(output_dir, output_filename).format(result.id))
+        save_alignment(result.alignments, result.text, result.mel_length, result.id,
+                       os.path.join(output_dir, output_filename).format(result.id))
