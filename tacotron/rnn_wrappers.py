@@ -119,9 +119,7 @@ class AttentionRNN(RNNCell):
             attention_mechanism,
             alignment_history=True,
             output_attention=False)
-        # ToDo: Remove ConcatOutputAndAttentionWrapper because AttentionWrapper already includes concatenation.
-        concat_cell = ConcatOutputAndAttentionWrapper(attention_cell)
-        self._cell = concat_cell
+        self._cell = attention_cell
 
     @property
     def state_size(self):
