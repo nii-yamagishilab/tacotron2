@@ -88,6 +88,12 @@ py_binary(
 Now you can import `tacotron2` package in your training script.
 
 
+## ToDo
+
+- [ ] Add Tacotron2 model
+- [ ] Implement L2 regularization
+- [ ] More easy to use runnable example
+
 ## Authors
 
 - Yusuke Yasuda (National Institute of Informatics, Japan) @TanUkkii007

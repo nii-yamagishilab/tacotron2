@@ -28,7 +28,7 @@ if __name__ == "__main__":
     out_dir = args["<out_dir>"]
     source_only = args["--source-only"]
     target_only = args["--target-only"]
-    source_and_target = source_only is None and target_only is None
+    source_and_target = not source_only and not target_only
 
     assert name in ["blizzard2012", "ljspeech"]
     mod = importlib.import_module("datasets." + name)
