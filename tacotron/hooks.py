@@ -127,10 +127,11 @@ class MetricsSaver(tf.train.SessionRunHook):
         if self.mode == tf.estimator.ModeKeys.EVAL:
             current_global_step = session.run(self.global_step_tensor)
             with open(os.path.join(self.writer.get_logdir(), "checkpoint")) as f:
-                checkpoints = [self.extract_global_step(ckpt) for ckpt in f[1:]]
-                checkpoints = filter(lambda gs: gs < current_global_step, checkpoints)
+                checkpoints = [ckpt for ckpt in f]
+                checkpoints = [self.extract_global_step(ckpt) for ckpt in checkpoints[1:]]
+                checkpoints = list(filter(lambda gs: gs < current_global_step, checkpoints))
                 if len(checkpoints) > self.keep_eval_results_max_epoch:
-                    checkpoint_to_delete = checkpoints[self.save_training_time_metrics]
+                    checkpoint_to_delete = checkpoints[-self.keep_eval_results_max_epoch]
                     tf.logging.info("Deleting %s results at the step %d", self.mode, checkpoint_to_delete)
                     filespec = os.path.join(self.writer.get_logdir(),
                                             "eval_result_step{:09d}_*.tfrecord".format(checkpoint_to_delete))
