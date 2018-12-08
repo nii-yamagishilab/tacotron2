@@ -133,9 +133,14 @@ class MetricsSaver(tf.train.SessionRunHook):
                 if len(checkpoints) > self.keep_eval_results_max_epoch:
                     checkpoint_to_delete = checkpoints[-self.keep_eval_results_max_epoch]
                     tf.logging.info("Deleting %s results at the step %d", self.mode, checkpoint_to_delete)
-                    filespec = os.path.join(self.writer.get_logdir(),
-                                            "eval_result_step{:09d}_*.tfrecord".format(checkpoint_to_delete))
-                    for pathname in tf.gfile.Glob(filespec):
+                    tfrecord_filespec = os.path.join(self.writer.get_logdir(),
+                                                     "eval_result_step{:09d}_*.tfrecord".format(checkpoint_to_delete))
+                    alignment_filespec = os.path.join(self.writer.get_logdir(),
+                                                      "alignment_eval_result_step{:09d}_*.png".format(
+                                                          checkpoint_to_delete))
+                    mel_filespec = os.path.join(self.writer.get_logdir(),
+                                                "eval_eval_result_step{:09d}_*.png".format(checkpoint_to_delete))
+                    for pathname in tf.gfile.Glob([tfrecord_filespec, alignment_filespec, mel_filespec]):
                         file_io.delete_file(pathname)
 
     def extract_global_step(self, checkpoint_str):
