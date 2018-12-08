@@ -24,9 +24,42 @@ import tensorflow as tf
 from tensorflow.contrib.rnn import RNNCell, MultiRNNCell, OutputProjectionWrapper
 from tensorflow.contrib.seq2seq import BahdanauAttention
 from functools import reduce
-from typing import Tuple
-from tacotron.modules import PreNet, ZoneoutLSTMCell, Conv1d
+from tacotron.modules import ZoneoutLSTMCell, Conv1d
 from tacotron.rnn_wrappers import AttentionRNN
+
+
+class EncoderV2(tf.layers.Layer):
+
+    def __init__(self, num_conv_layers, kernel_size, out_units, drop_rate,
+                 zoneout_factor_cell, zoneout_factor_output,
+                 is_training,
+                 trainable=True, name=None, **kwargs):
+        super(EncoderV2, self).__init__(name=name, trainable=trainable, **kwargs)
+        assert out_units % 2 == 0
+        self.out_units = out_units
+        self.zoneout_factor_cell = zoneout_factor_cell
+        self.zoneout_factor_output = zoneout_factor_output
+        self.is_training = is_training
+
+        self.convolutions = [Conv1d(kernel_size, out_units, activation=tf.nn.relu, is_training=is_training,
+                                    drop_rate=drop_rate,
+                                    name=f"conv1d_{i}") for i in
+                             range(0, num_conv_layers)]
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, inputs, input_lengths=None):
+        conv_output = reduce(lambda acc, conv: conv(acc), self.convolutions, inputs)
+        outputs, states = tf.nn.bidirectional_dynamic_rnn(
+            ZoneoutLSTMCell(self.out_units // 2, self.is_training, self.zoneout_factor_cell,
+                            self.zoneout_factor_output),
+            ZoneoutLSTMCell(self.out_units // 2, self.is_training, self.zoneout_factor_cell,
+                            self.zoneout_factor_output),
+            conv_output,
+            sequence_length=input_lengths,
+            dtype=inputs.dtype)
+        return tf.concat(outputs, axis=-1)
 
 
 def _location_sensitive_score(W_query, W_fill, W_keys):
@@ -143,18 +176,19 @@ class PostNetV2(tf.layers.Layer):
                  trainable=True, name=None, **kwargs):
         super(PostNetV2, self).__init__(name=name, trainable=trainable, **kwargs)
 
-        self.drop_rate = drop_rate
         final_conv_layer = Conv1d(kernel_size, out_channels, activation=None, is_training=is_training,
+                                  drop_rate=drop_rate,
                                   name=f"conv1d_{num_postnet_layers}")
 
         self.convolutions = [Conv1d(kernel_size, out_channels, activation=tf.nn.tanh, is_training=is_training,
+                                    drop_rate=drop_rate,
                                     name=f"conv1d_{i}") for i in
                              range(1, num_postnet_layers)] + [final_conv_layer]
 
         self.projection_layer = tf.layers.Dense(out_units)
 
     def call(self, inputs, **kwargs):
-        output = reduce(lambda acc, conv: tf.layers.dropout(conv(acc), rate=self.drop_rate), self.convolutions, inputs)
+        output = reduce(lambda acc, conv: conv(acc), self.convolutions, inputs)
         projected = self.projection_layer(output)
         summed = inputs + projected
         return summed
