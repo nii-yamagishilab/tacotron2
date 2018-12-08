@@ -6,8 +6,10 @@
 """ Hooks. """
 
 import tensorflow as tf
+from tensorflow.python.lib.io import file_io
 import os
 import numpy as np
+import re
 from typing import List
 from util.tfrecord import write_tfrecord, int64_feature, bytes_feature
 from util.metrics import plot_alignment, plot_mel, plot_spec
@@ -73,7 +75,8 @@ class MetricsSaver(tf.train.SessionRunHook):
                  mel_length_tensor, id_tensor,
                  text_tensor, save_steps,
                  mode, writer: tf.summary.FileWriter,
-                 save_training_time_metrics=True):
+                 save_training_time_metrics=True,
+                 keep_eval_results_max_epoch=10):
         self.alignment_tensors = alignment_tensors
         self.global_step_tensor = global_step_tensor
         self.predicted_mel_tensor = predicted_mel_tensor
@@ -85,6 +88,8 @@ class MetricsSaver(tf.train.SessionRunHook):
         self.mode = mode
         self.writer = writer
         self.save_training_time_metrics = save_training_time_metrics
+        self.keep_eval_results_max_epoch = keep_eval_results_max_epoch
+        self.checkpoint_pattern = re.compile('all_model_checkpoint_paths: "model.ckpt-(\d+)"')
 
     def before_run(self, run_context):
         return tf.train.SessionRunArgs({
@@ -117,6 +122,23 @@ class MetricsSaver(tf.train.SessionRunHook):
                                    os.path.join(self.writer.get_logdir(), "alignment_" + output_filename))
                     plot_mel(gt_mel, pred_mel, text.decode('utf-8'), _id, global_step_value,
                              os.path.join(self.writer.get_logdir(), "mel_" + output_filename))
+
+    def end(self, session):
+        if self.mode == tf.estimator.ModeKeys.EVAL:
+            current_global_step = session.run(self.global_step_tensor)
+            with open(os.path.join(self.writer.get_logdir(), "checkpoint")) as f:
+                checkpoints = [self.extract_global_step(ckpt) for ckpt in f[1:]]
+                checkpoints = filter(lambda gs: gs < current_global_step, checkpoints)
+                if len(checkpoints) > self.keep_eval_results_max_epoch:
+                    checkpoint_to_delete = checkpoints[self.save_training_time_metrics]
+                    tf.logging.info("Deleting %s results at the step %d", self.mode, checkpoint_to_delete)
+                    filespec = os.path.join(self.writer.get_logdir(),
+                                            "eval_result_step{:09d}_*.tfrecord".format(checkpoint_to_delete))
+                    for pathname in tf.gfile.Glob(filespec):
+                        file_io.delete_file(pathname)
+
+    def extract_global_step(self, checkpoint_str):
+        return int(self.checkpoint_pattern.match(checkpoint_str)[1])
 
 
 class PostNetMetricsSaver(tf.train.SessionRunHook):
