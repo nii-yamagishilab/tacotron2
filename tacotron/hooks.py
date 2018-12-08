@@ -104,7 +104,7 @@ class MetricsSaver(tf.train.SessionRunHook):
             global_step_value, alignments, predicted_mels, ground_truth_mels, mel_length, ids, texts = run_context.session.run(
                 (self.global_step_tensor, self.alignment_tensors, self.predicted_mel_tensor,
                  self.ground_truth_mel_tensor, self.mel_length_tensor, self.id_tensor, self.text_tensor))
-            if self.save_training_time_metrics:
+            if self.mode == tf.estimator.ModeKeys.EVAL or self.save_training_time_metrics:
                 id_strings = ",".join([str(i) for i in ids][:10])
                 result_filename = "{}_result_step{:09d}_{}.tfrecord".format(self.mode, global_step_value, id_strings)
                 tf.logging.info("Saving a %s result for %d at %s", self.mode, global_step_value, result_filename)
