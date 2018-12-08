@@ -139,7 +139,7 @@ class MetricsSaver(tf.train.SessionRunHook):
                                                       "alignment_eval_result_step{:09d}_*.png".format(
                                                           checkpoint_to_delete))
                     mel_filespec = os.path.join(self.writer.get_logdir(),
-                                                "eval_eval_result_step{:09d}_*.png".format(checkpoint_to_delete))
+                                                "mel_eval_result_step{:09d}_*.png".format(checkpoint_to_delete))
                     for pathname in tf.gfile.Glob([tfrecord_filespec, alignment_filespec, mel_filespec]):
                         file_io.delete_file(pathname)
 
