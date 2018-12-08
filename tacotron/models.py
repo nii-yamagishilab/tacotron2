@@ -80,7 +80,9 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                    features.id,
                                                    features.text,
                                                    params.alignment_save_steps,
-                                                   mode, summary_writer)
+                                                   mode, summary_writer,
+                                                   params.save_training_time_metrics,
+                                                   params.keep_eval_results_max_epoch)
                     hooks = [alignment_saver]
                     if params.record_profile:
                         profileHook = tf.train.ProfilerHook(save_steps=params.profile_steps, output_dir=model_dir,
@@ -110,7 +112,9 @@ class SingleSpeakerTacotronV1Model(tf.estimator.Estimator):
                                                features.id,
                                                features.text,
                                                1,
-                                               mode, summary_writer)
+                                               mode, summary_writer,
+                                               params.save_training_time_metrics,
+                                               params.keep_eval_results_max_epoch)
                 return tf.estimator.EstimatorSpec(mode, loss=loss,
                                                   evaluation_hooks=[alignment_saver],
                                                   eval_metric_ops=eval_metric_ops)
