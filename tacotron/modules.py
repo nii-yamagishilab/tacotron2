@@ -68,11 +68,13 @@ class Embedding(tf.layers.Layer):
 class PreNet(tf.layers.Layer):
 
     def __init__(self, out_units, is_training, drop_rate=0.5,
+                 apply_dropout_on_inference=False,
                  trainable=True, name=None, **kwargs):
         super(PreNet, self).__init__(name=name, trainable=trainable, **kwargs)
         self.out_units = out_units
         self.drop_rate = drop_rate
         self.is_training = is_training
+        self.apply_dropout_on_inference = apply_dropout_on_inference
         self.dense = tf.layers.Dense(out_units, activation=tf.nn.relu)
 
     def build(self, _):
@@ -80,11 +82,15 @@ class PreNet(tf.layers.Layer):
 
     def call(self, inputs, **kwargs):
         dense = self.dense(inputs)
-        dropout = tf.layers.dropout(dense, rate=self.drop_rate, training=self.is_training)
+        dropout = tf.layers.dropout(dense, rate=self.drop_rate, training=self.dropout_enabled)
         return dropout
 
     def compute_output_shape(self, input_shape):
         return self.dense.compute_output_shape(input_shape)
+
+    @property
+    def dropout_enabled(self):
+        return self.is_training or self.apply_dropout_on_inference
 
 
 class HighwayNet(tf.layers.Layer):
