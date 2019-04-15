@@ -220,7 +220,8 @@ class CBHG(tf.layers.Layer):
 class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
 
     def __init__(self, num_units, is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0, state_is_tuple=True,
-                 name=None):
+                 trainable=True, name=None, **kwargs):
+        super(ZoneoutLSTMCell, self).__init__(name=name, trainable=trainable, **kwargs)
         zm = min(zoneout_factor_output, zoneout_factor_cell)
         zs = max(zoneout_factor_output, zoneout_factor_cell)
 
