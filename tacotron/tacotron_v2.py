@@ -103,12 +103,12 @@ class LocationSensitiveAttention(BahdanauAttention):
                                                      kernel_size=attention_kernel,
                                                      padding="SAME",
                                                      use_bias=True,
-                                                     bias_initializer=tf.zeros_initializer(),
+                                                     bias_initializer=tf.zeros_initializer(dtype=memory.dtype),
                                                      name="location_features_convolution")
 
         self.location_layer = tf.layers.Dense(units=num_units,
                                               use_bias=False,
-                                              dtype=tf.float32,
+                                              dtype=memory.dtype,
                                               name="location_features_layer")
 
     def __call__(self, query, state):

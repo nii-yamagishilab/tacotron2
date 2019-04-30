@@ -44,16 +44,17 @@ from functools import reduce
 
 class Embedding(tf.layers.Layer):
 
-    def __init__(self, num_symbols, embedding_dim, index_offset=0,
+    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=tf.float32,
                  trainable=True, name=None, **kwargs):
         super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
+        self._dtype = dtype
         self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):
         self._embedding = self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim],
-                                            dtype=tf.float32)
+                                            dtype=self._dtype)
         self.built = True
 
     def call(self, inputs, **kwargs):
@@ -209,7 +210,7 @@ class CBHG(tf.layers.Layer):
             GRUCell(self.out_units // 2),
             highway_output,
             sequence_length=input_lengths,
-            dtype=tf.float32)
+            dtype=highway_output.dtype)
 
         return tf.concat(outputs, axis=-1)
 

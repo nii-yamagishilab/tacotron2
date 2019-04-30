@@ -124,7 +124,7 @@ class DecoderV1(tf.layers.Layer):
         decoder_cell = DecoderRNNV1(self.decoder_out_units, attention_cell)
         output_and_done_cell = OutputAndStopTokenWrapper(decoder_cell, self.num_mels * self.outputs_per_step)
 
-        decoder_initial_state = output_and_done_cell.zero_state(batch_size, dtype=tf.float32)
+        decoder_initial_state = output_and_done_cell.zero_state(batch_size, dtype=source.dtype)
 
         helper = TrainingHelper(target,
                                 self.num_mels,
