@@ -141,7 +141,10 @@ class Conv1d(tf.layers.Layer):
 
     def call(self, inputs, **kwargs):
         conv1d = self.conv1d(inputs)
-        batch_normalization = tf.layers.batch_normalization(conv1d, training=self.is_training)
+        # fused_batch_norm (and 16bit precision) is only supported for 4D tensor
+        conv1d_rank4 = tf.expand_dims(conv1d, axis=2)
+        batch_normalization_rank4 = tf.layers.batch_normalization(conv1d_rank4, training=self.is_training)
+        batch_normalization = tf.squeeze(batch_normalization_rank4, axis=2)
         output = self.activation(batch_normalization) if self.activation is not None else batch_normalization
         output = tf.layers.dropout(output, self.drop_rate, training=self.is_training)
         return output
