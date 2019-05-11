@@ -38,13 +38,14 @@ https://github.com/teganmaharaj/zoneout/issues/8
 """
 
 import tensorflow as tf
+import keras.backend as K
 from tensorflow.contrib.rnn import GRUCell
 from functools import reduce
 
 
 class Embedding(tf.layers.Layer):
 
-    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=tf.float32,
+    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=K.floatx(),
                  trainable=True, name=None, **kwargs):
         super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
         self._num_symbols = num_symbols
