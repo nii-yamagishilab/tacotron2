@@ -45,12 +45,12 @@ from functools import reduce
 
 class Embedding(tf.layers.Layer):
 
-    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=K.floatx(),
+    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=None,
                  trainable=True, name=None, **kwargs):
         super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
-        self._dtype = dtype
+        self._dtype = dtype or K.floatx()
         self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):
