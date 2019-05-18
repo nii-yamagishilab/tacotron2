@@ -6,17 +6,19 @@
 """ Helpers. """
 
 import tensorflow as tf
+import keras.backend as K
 from tensorflow.contrib.seq2seq import Helper
 
 
 class InferenceHelper(Helper):
 
-    def __init__(self, batch_size, output_dim, r, n_feed_frame=1):
+    def __init__(self, batch_size, output_dim, r, n_feed_frame=1, dtype=None):
         assert n_feed_frame <= r
         self._batch_size = batch_size
         self._output_dim = output_dim
         self._end_token = tf.tile([0.0], [output_dim * r])
         self.n_feed_frame = n_feed_frame
+        self._dtype = dtype or K.floatx()
 
     @property
     def batch_size(self):
@@ -32,7 +34,8 @@ class InferenceHelper(Helper):
 
     def initialize(self, name=None):
         return (
-            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]),
+            _go_frames(self._batch_size, self._output_dim * self.n_feed_frame, self._dtype))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -48,12 +51,13 @@ class InferenceHelper(Helper):
 
 class StopTokenBasedInferenceHelper(Helper):
 
-    def __init__(self, batch_size, output_dim, r, n_feed_frame=1, min_iters=10):
+    def __init__(self, batch_size, output_dim, r, n_feed_frame=1, min_iters=10, dtype=None):
         assert n_feed_frame <= r
         self._batch_size = batch_size
         self._output_dim = output_dim
         self.n_feed_frame = n_feed_frame
         self.min_iters = min_iters
+        self._dtype = dtype or K.floatx()
 
     @property
     def batch_size(self):
@@ -69,7 +73,8 @@ class StopTokenBasedInferenceHelper(Helper):
 
     def initialize(self, name=None):
         return (
-            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]),
+            _go_frames(self._batch_size, self._output_dim * self.n_feed_frame, self._dtype))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -116,7 +121,8 @@ class ValidationHelper(Helper):
 
     def initialize(self, name=None):
         return (
-            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]),
+            _go_frames(self._batch_size, self._output_dim * self.n_feed_frame, self._targets.dtype))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -163,7 +169,8 @@ class TrainingHelper(Helper):
 
     def initialize(self, name=None):
         return (
-            tf.tile([False], [self._batch_size]), _go_frames(self._batch_size, self._output_dim * self.n_feed_frame))
+            tf.tile([False], [self._batch_size]),
+            _go_frames(self._batch_size, self._output_dim * self.n_feed_frame, self._targets.dtype))
 
     def sample(self, time, outputs, state, name=None):
         # return all-zero dummy tensor
@@ -177,5 +184,5 @@ class TrainingHelper(Helper):
         return (finished, next_inputs, state)
 
 
-def _go_frames(batch_size, output_dim, n_feed_frame=1):
-    return tf.tile([[0.0]], [batch_size, output_dim * n_feed_frame])
+def _go_frames(batch_size, output_dim, dtype):
+    return tf.tile(tf.convert_to_tensor([[0.0]], dtype=dtype), [batch_size, output_dim])
