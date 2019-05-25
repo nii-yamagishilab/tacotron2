@@ -54,7 +54,7 @@ class EncoderV1(tf.layers.Layer):
 def AttentionRNNV1(num_units, prenets: Tuple[PreNet],
                    memory, memory_sequence_length):
     rnn_cell = GRUCell(num_units)
-    attention_mechanism = BahdanauAttention(num_units, memory, memory_sequence_length)
+    attention_mechanism = BahdanauAttention(num_units, memory, memory_sequence_length, dtype=memory.dtype)
     return AttentionRNN(rnn_cell, prenets, attention_mechanism)
 
 

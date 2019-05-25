@@ -88,6 +88,7 @@ class LocationSensitiveAttention(BahdanauAttention):
                  attention_filters,
                  smoothing=False,
                  cumulative_weights=True,
+                 dtype=None,
                  name="LocationSensitiveAttention"):
         probability_fn = self._smoothing_normalization if smoothing else None
 
@@ -96,6 +97,7 @@ class LocationSensitiveAttention(BahdanauAttention):
             memory=memory,
             memory_sequence_length=memory_sequence_length,
             probability_fn=probability_fn,
+            dtype=dtype or memory.dtype,
             name=name)
         self._cumulative_weights = cumulative_weights
 
