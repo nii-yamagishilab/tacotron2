@@ -22,7 +22,7 @@
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 # ==============================================================================
-# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Copyright (c) 2018-2019, Yamagishi Laboratory, National Institute of Informatics
 # Author: Yusuke Yasuda (yasuda@nii.ac.jp)
 # All rights reserved.
 # ==============================================================================
@@ -38,7 +38,7 @@ https://github.com/teganmaharaj/zoneout/issues/8
 """
 
 import tensorflow as tf
-import keras.backend as K
+from tensorflow.python.keras import backend
 from tensorflow.contrib.rnn import GRUCell
 from functools import reduce
 
@@ -50,7 +50,7 @@ class Embedding(tf.layers.Layer):
         super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
-        self._dtype = dtype or K.floatx()
+        self._dtype = dtype or backend.floatx()
         self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):

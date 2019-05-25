@@ -1,12 +1,12 @@
 # ==============================================================================
-# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Copyright (c) 2018-2019, Yamagishi Laboratory, National Institute of Informatics
 # Author: Yusuke Yasuda (yasuda@nii.ac.jp)
 # All rights reserved.
 # ==============================================================================
 """ Helpers. """
 
 import tensorflow as tf
-import keras.backend as K
+from tensorflow.python.keras import backend
 from tensorflow.contrib.seq2seq import Helper
 
 
@@ -18,7 +18,7 @@ class InferenceHelper(Helper):
         self._output_dim = output_dim
         self._end_token = tf.tile([0.0], [output_dim * r])
         self.n_feed_frame = n_feed_frame
-        self._dtype = dtype or K.floatx()
+        self._dtype = dtype or backend.floatx()
 
     @property
     def batch_size(self):
@@ -57,7 +57,7 @@ class StopTokenBasedInferenceHelper(Helper):
         self._output_dim = output_dim
         self.n_feed_frame = n_feed_frame
         self.min_iters = min_iters
-        self._dtype = dtype or K.floatx()
+        self._dtype = dtype or backend.floatx()
 
     @property
     def batch_size(self):
