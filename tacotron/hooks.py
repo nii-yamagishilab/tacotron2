@@ -104,12 +104,15 @@ class MetricsSaver(tf.train.SessionRunHook):
             global_step_value, alignments, predicted_mels, ground_truth_mels, mel_length, ids, texts = run_context.session.run(
                 (self.global_step_tensor, self.alignment_tensors, self.predicted_mel_tensor,
                  self.ground_truth_mel_tensor, self.mel_length_tensor, self.id_tensor, self.text_tensor))
+            alignments = [a.astype(np.float32) for a in alignments]
+            predicted_mels = [m.astype(np.float32) for m in list(predicted_mels)]
+            ground_truth_mels = [m.astype(np.float32) for m in list(ground_truth_mels)]
             if self.mode == tf.estimator.ModeKeys.EVAL or self.save_training_time_metrics:
                 id_strings = ",".join([str(i) for i in ids][:10])
                 result_filename = "{}_result_step{:09d}_{}.tfrecord".format(self.mode, global_step_value, id_strings)
                 tf.logging.info("Saving a %s result for %d at %s", self.mode, global_step_value, result_filename)
-                write_training_result(global_step_value, list(ids), list(texts), list(predicted_mels),
-                                      list(ground_truth_mels), list(mel_length),
+                write_training_result(global_step_value, list(ids), list(texts), predicted_mels,
+                                      ground_truth_mels, list(mel_length),
                                       alignments,
                                       filename=os.path.join(self.writer.get_logdir(), result_filename))
             if self.mode == tf.estimator.ModeKeys.EVAL:

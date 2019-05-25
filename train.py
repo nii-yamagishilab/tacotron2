@@ -45,7 +45,7 @@ def train_and_evaluate(hparams, model_dir, train_source_files, train_target_file
                                                            cycle_length=interleave_parallelism,
                                                            buffer_output_elements=hparams.interleave_buffer_output_elements,
                                                            prefetch_input_elements=hparams.interleave_prefetch_input_elements)
-        batched = dataset.prepare_and_zip().filter_by_max_output_length().shuffle_and_repeat(
+        batched = dataset.prepare_and_zip().filter_by_max_output_length().repeat(count=None).shuffle(
             hparams.suffle_buffer_size).group_by_batch().prefetch(hparams.prefetch_buffer_size)
         return batched.dataset
 

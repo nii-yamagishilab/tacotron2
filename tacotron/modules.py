@@ -22,7 +22,7 @@
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 # ==============================================================================
-# Copyright (c) 2018, Yamagishi Laboratory, National Institute of Informatics
+# Copyright (c) 2018-2019, Yamagishi Laboratory, National Institute of Informatics
 # Author: Yusuke Yasuda (yasuda@nii.ac.jp)
 # All rights reserved.
 # ==============================================================================
@@ -38,22 +38,24 @@ https://github.com/teganmaharaj/zoneout/issues/8
 """
 
 import tensorflow as tf
+from tensorflow.python.keras import backend
 from tensorflow.contrib.rnn import GRUCell
 from functools import reduce
 
 
 class Embedding(tf.layers.Layer):
 
-    def __init__(self, num_symbols, embedding_dim, index_offset=0,
+    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=None,
                  trainable=True, name=None, **kwargs):
         super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
+        self._dtype = dtype or backend.floatx()
         self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):
         self._embedding = self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim],
-                                            dtype=tf.float32)
+                                            dtype=self._dtype)
         self.built = True
 
     def call(self, inputs, **kwargs):
@@ -140,7 +142,10 @@ class Conv1d(tf.layers.Layer):
 
     def call(self, inputs, **kwargs):
         conv1d = self.conv1d(inputs)
-        batch_normalization = tf.layers.batch_normalization(conv1d, training=self.is_training)
+        # fused_batch_norm (and 16bit precision) is only supported for 4D tensor
+        conv1d_rank4 = tf.expand_dims(conv1d, axis=2)
+        batch_normalization_rank4 = tf.layers.batch_normalization(conv1d_rank4, training=self.is_training)
+        batch_normalization = tf.squeeze(batch_normalization_rank4, axis=2)
         output = self.activation(batch_normalization) if self.activation is not None else batch_normalization
         output = tf.layers.dropout(output, self.drop_rate, training=self.is_training)
         return output
@@ -209,7 +214,7 @@ class CBHG(tf.layers.Layer):
             GRUCell(self.out_units // 2),
             highway_output,
             sequence_length=input_lengths,
-            dtype=tf.float32)
+            dtype=highway_output.dtype)
 
         return tf.concat(outputs, axis=-1)
 
