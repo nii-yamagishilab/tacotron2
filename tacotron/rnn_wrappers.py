@@ -20,7 +20,7 @@ Reference: https://github.com/keithito/tacotron/blob/master/models/rnn_wrappers.
 """
 
 import tensorflow as tf
-from tensorflow.contrib.rnn import GRUCell, RNNCell
+from tensorflow.contrib.rnn import RNNCell
 from tensorflow.contrib.seq2seq import AttentionWrapper
 from typing import Tuple
 from functools import reduce
