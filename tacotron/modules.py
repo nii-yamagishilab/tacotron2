@@ -39,7 +39,7 @@ https://github.com/teganmaharaj/zoneout/issues/8
 
 import tensorflow as tf
 from tensorflow.python.keras import backend
-from tacotron.rnn_impl import lstm_cell_factory, LSTMImpl, GRUImpl
+from tacotron.rnn_impl import lstm_cell_factory, LSTMImpl
 from functools import reduce
 
 
