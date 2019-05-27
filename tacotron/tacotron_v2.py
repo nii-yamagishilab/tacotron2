@@ -21,9 +21,11 @@ Reference: https://github.com/Rayhane-mamah/Tacotron-2/blob/master/tacotron/mode
 """
 
 import tensorflow as tf
+from tensorflow.contrib.rnn import RNNCell, MultiRNNCell, OutputProjectionWrapper
 from tensorflow.contrib.seq2seq import BahdanauAttention
 from functools import reduce
 from tacotron.modules import ZoneoutLSTMCell, Conv1d
+from tacotron.rnn_wrappers import AttentionRNN
 from tacotron.rnn_impl import LSTMImpl
 
 
@@ -139,6 +141,38 @@ class LocationSensitiveAttention(BahdanauAttention):
 
     def _smoothing_normalization(e):
         return tf.nn.sigmoid(e) / tf.reduce_sum(tf.nn.sigmoid(e), axis=-1, keep_dims=True)
+
+
+class DecoderRNNV2(RNNCell):
+
+    def __init__(self, out_units, attention_cell: AttentionRNN,
+                 is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0,
+                 lstm_impl=LSTMImpl.LSTMCell,
+                 trainable=True, name=None, **kwargs):
+        super(DecoderRNNV2, self).__init__(name=name, trainable=trainable, **kwargs)
+
+        self._cell = MultiRNNCell([
+            OutputProjectionWrapper(attention_cell, out_units),
+            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output, lstm_impl=lstm_impl),
+            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output, lstm_impl=lstm_impl),
+        ], state_is_tuple=True)
+
+    @property
+    def state_size(self):
+        return self._cell.state_size
+
+    @property
+    def output_size(self):
+        return self._cell.output_size
+
+    def zero_state(self, batch_size, dtype):
+        return self._cell.zero_state(batch_size, dtype)
+
+    def compute_output_shape(self, input_shape):
+        return tf.TensorShape([input_shape[0], input_shape[1], self.output_size])
+
+    def call(self, inputs, state):
+        return self._cell(inputs, state)
 
 
 class PostNetV2(tf.layers.Layer):
