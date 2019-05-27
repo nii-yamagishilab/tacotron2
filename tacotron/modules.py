@@ -39,7 +39,7 @@ https://github.com/teganmaharaj/zoneout/issues/8
 
 import tensorflow as tf
 from tensorflow.python.keras import backend
-from tacotron.rnn_impl import lstm_factory, LSTMImpl, GRUImpl
+from tacotron.rnn_impl import lstm_cell_factory, LSTMImpl, GRUImpl
 from functools import reduce
 
 
@@ -157,14 +157,13 @@ class Conv1d(tf.layers.Layer):
 class CBHG(tf.layers.Layer):
 
     def __init__(self, out_units, conv_channels, max_filter_width, projection1_out_channels, projection2_out_channels,
-                 num_highway, is_training, gru_impl=GRUImpl.GRUCell,
+                 num_highway, is_training,
                  trainable=True, name=None, **kwargs):
         half_out_units = out_units // 2
         assert out_units % 2 == 0
         super(CBHG, self).__init__(name=name, trainable=trainable, **kwargs)
 
         self.out_units = out_units
-        self._gru_impl = gru_impl
 
         self.convolution_banks = [
             Conv1d(kernel_size,
@@ -236,7 +235,7 @@ class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
         if zm < 0. or zs > 1.:
             raise ValueError('One/both provided Zoneout factors are not in [0, 1]')
 
-        self._cell = lstm_factory(lstm_impl, 1, num_units)
+        self._cell = lstm_cell_factory(lstm_impl, num_units)
         self._zoneout_cell = zoneout_factor_cell
         self._zoneout_outputs = zoneout_factor_output
         self.is_training = is_training
