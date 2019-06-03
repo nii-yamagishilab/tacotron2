@@ -6,11 +6,12 @@
 """ Tacotron modules. """
 
 import tensorflow as tf
-from tensorflow.contrib.rnn import GRUCell, RNNCell, MultiRNNCell, OutputProjectionWrapper, ResidualWrapper
+from tensorflow.contrib.rnn import OutputProjectionWrapper
 from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention
 from tacotron.modules import PreNet, CBHG
 from tacotron.rnn_wrappers import OutputAndStopTokenWrapper, AttentionRNN
 from tacotron.helpers import StopTokenBasedInferenceHelper, TrainingHelper, ValidationHelper
+from tacotron.rnn_impl import GRUImpl, gru_cell_factory
 from functools import reduce
 from typing import Tuple
 
@@ -51,23 +52,25 @@ class EncoderV1(tf.layers.Layer):
         return self.cbhg.compute_output_shape(input_shape)
 
 
+# ToDo: remove this function and use attention mechanism factory
 def AttentionRNNV1(num_units, prenets: Tuple[PreNet],
-                   memory, memory_sequence_length):
-    rnn_cell = GRUCell(num_units)
+                   memory, memory_sequence_length, gru_impl=GRUImpl.GRUCell):
+    rnn_cell = gru_cell_factory(gru_impl, num_units)
     attention_mechanism = BahdanauAttention(num_units, memory, memory_sequence_length, dtype=memory.dtype)
     return AttentionRNN(rnn_cell, prenets, attention_mechanism)
 
 
-class DecoderRNNV1(RNNCell):
+class DecoderRNNV1(tf.nn.rnn_cell.RNNCell):
 
     def __init__(self, out_units, attention_cell: AttentionRNN,
+                 gru_impl=GRUImpl.GRUCell,
                  trainable=True, name=None, **kwargs):
         super(DecoderRNNV1, self).__init__(name=name, trainable=trainable, **kwargs)
 
-        self._cell = MultiRNNCell([
+        self._cell = tf.nn.rnn_cell.MultiRNNCell([
             OutputProjectionWrapper(attention_cell, out_units),
-            ResidualWrapper(GRUCell(out_units)),
-            ResidualWrapper(GRUCell(out_units)),
+            tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units)),
+            tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units)),
         ], state_is_tuple=True)
 
     @property

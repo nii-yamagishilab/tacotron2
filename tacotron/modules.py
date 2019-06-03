@@ -39,7 +39,7 @@ https://github.com/teganmaharaj/zoneout/issues/8
 
 import tensorflow as tf
 from tensorflow.python.keras import backend
-from tensorflow.contrib.rnn import GRUCell
+from tacotron.rnn_impl import lstm_cell_factory, LSTMImpl
 from functools import reduce
 
 
@@ -209,9 +209,10 @@ class CBHG(tf.layers.Layer):
 
         highway_output = reduce(lambda acc, hw: hw(acc), self.highway_nets, highway_input)
 
+        # ToDo: use factory from rnn_impl once rnn_impl support bidirectional RNN
         outputs, states = tf.nn.bidirectional_dynamic_rnn(
-            GRUCell(self.out_units // 2),
-            GRUCell(self.out_units // 2),
+            tf.nn.rnn_cell.GRUCell(self.out_units // 2),
+            tf.nn.rnn_cell.GRUCell(self.out_units // 2),
             highway_output,
             sequence_length=input_lengths,
             dtype=highway_output.dtype)
@@ -225,6 +226,7 @@ class CBHG(tf.layers.Layer):
 class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
 
     def __init__(self, num_units, is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0, state_is_tuple=True,
+                 lstm_impl=LSTMImpl.LSTMCell,
                  trainable=True, name=None, **kwargs):
         super(ZoneoutLSTMCell, self).__init__(name=name, trainable=trainable, **kwargs)
         zm = min(zoneout_factor_output, zoneout_factor_cell)
@@ -233,7 +235,7 @@ class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
         if zm < 0. or zs > 1.:
             raise ValueError('One/both provided Zoneout factors are not in [0, 1]')
 
-        self._cell = tf.nn.rnn_cell.LSTMCell(num_units, state_is_tuple=state_is_tuple, name=name)
+        self._cell = lstm_cell_factory(lstm_impl, num_units)
         self._zoneout_cell = zoneout_factor_cell
         self._zoneout_outputs = zoneout_factor_output
         self.is_training = is_training

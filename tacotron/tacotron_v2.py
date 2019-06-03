@@ -26,13 +26,14 @@ from tensorflow.contrib.seq2seq import BahdanauAttention
 from functools import reduce
 from tacotron.modules import ZoneoutLSTMCell, Conv1d
 from tacotron.rnn_wrappers import AttentionRNN
+from tacotron.rnn_impl import LSTMImpl
 
 
 class EncoderV2(tf.layers.Layer):
 
     def __init__(self, num_conv_layers, kernel_size, out_units, drop_rate,
-                 zoneout_factor_cell, zoneout_factor_output,
-                 is_training,
+                 zoneout_factor_cell, zoneout_factor_output, is_training,
+                 lstm_impl=LSTMImpl.LSTMCell,
                  trainable=True, name=None, **kwargs):
         super(EncoderV2, self).__init__(name=name, trainable=trainable, **kwargs)
         assert out_units % 2 == 0
@@ -40,6 +41,7 @@ class EncoderV2(tf.layers.Layer):
         self.zoneout_factor_cell = zoneout_factor_cell
         self.zoneout_factor_output = zoneout_factor_output
         self.is_training = is_training
+        self._lstm_impl = lstm_impl
 
         self.convolutions = [Conv1d(kernel_size, out_units, activation=tf.nn.relu, is_training=is_training,
                                     drop_rate=drop_rate,
@@ -53,9 +55,9 @@ class EncoderV2(tf.layers.Layer):
         conv_output = reduce(lambda acc, conv: conv(acc), self.convolutions, inputs)
         outputs, states = tf.nn.bidirectional_dynamic_rnn(
             ZoneoutLSTMCell(self.out_units // 2, self.is_training, self.zoneout_factor_cell,
-                            self.zoneout_factor_output),
+                            self.zoneout_factor_output, lstm_impl=self._lstm_impl),
             ZoneoutLSTMCell(self.out_units // 2, self.is_training, self.zoneout_factor_cell,
-                            self.zoneout_factor_output),
+                            self.zoneout_factor_output, lstm_impl=self._lstm_impl),
             conv_output,
             sequence_length=input_lengths,
             dtype=inputs.dtype)
@@ -145,13 +147,14 @@ class DecoderRNNV2(RNNCell):
 
     def __init__(self, out_units, attention_cell: AttentionRNN,
                  is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0,
+                 lstm_impl=LSTMImpl.LSTMCell,
                  trainable=True, name=None, **kwargs):
         super(DecoderRNNV2, self).__init__(name=name, trainable=trainable, **kwargs)
 
         self._cell = MultiRNNCell([
             OutputProjectionWrapper(attention_cell, out_units),
-            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output),
-            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output),
+            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output, lstm_impl=lstm_impl),
+            ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output, lstm_impl=lstm_impl),
         ], state_is_tuple=True)
 
     @property
