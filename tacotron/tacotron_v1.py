@@ -24,11 +24,11 @@ class EncoderV1(tf.layers.Layer):
                  projection2_out_channels=128,
                  num_highway=4,
                  prenet_out_units=(256, 128), drop_rate=0.5,
-                 trainable=True, name=None, **kwargs):
-        super(EncoderV1, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(EncoderV1, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         self.prenet_out_units = prenet_out_units
 
-        self.prenets = [PreNet(out_unit, is_training, drop_rate) for out_unit in prenet_out_units]
+        self.prenets = [PreNet(out_unit, is_training, drop_rate, dtype=dtype) for out_unit in prenet_out_units]
 
         self.cbhg = CBHG(cbhg_out_units,
                          conv_channels,
@@ -36,7 +36,8 @@ class EncoderV1(tf.layers.Layer):
                          projection1_out_channels,
                          projection2_out_channels,
                          num_highway,
-                         is_training)
+                         is_training,
+                         dtype=dtype)
 
     def build(self, input_shape):
         embed_dim = input_shape[2].value
@@ -54,23 +55,23 @@ class EncoderV1(tf.layers.Layer):
 
 # ToDo: remove this function and use attention mechanism factory
 def AttentionRNNV1(num_units, prenets: Tuple[PreNet],
-                   memory, memory_sequence_length, gru_impl=GRUImpl.GRUCell):
+                   memory, memory_sequence_length, gru_impl=GRUImpl.GRUCell, dtype=None):
     rnn_cell = gru_cell_factory(gru_impl, num_units)
-    attention_mechanism = BahdanauAttention(num_units, memory, memory_sequence_length, dtype=memory.dtype)
-    return AttentionRNN(rnn_cell, prenets, attention_mechanism)
+    attention_mechanism = BahdanauAttention(num_units, memory, memory_sequence_length, dtype=dtype)
+    return AttentionRNN(rnn_cell, prenets, attention_mechanism, dtype=dtype)
 
 
 class DecoderRNNV1(tf.nn.rnn_cell.RNNCell):
 
     def __init__(self, out_units, attention_cell: AttentionRNN,
                  gru_impl=GRUImpl.GRUCell,
-                 trainable=True, name=None, **kwargs):
-        super(DecoderRNNV1, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(DecoderRNNV1, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
 
         self._cell = tf.nn.rnn_cell.MultiRNNCell([
-            OutputProjectionWrapper(attention_cell, out_units),
-            tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units)),
-            tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units)),
+            OutputProjectionWrapper(attention_cell, out_units),  # ToDo: why OutputProjectionWrapper does not take dtype?
+            tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units, dtype=dtype)),
+            tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units, dtype=dtype)),
         ], state_is_tuple=True)
 
     @property
@@ -100,8 +101,8 @@ class DecoderV1(tf.layers.Layer):
                  outputs_per_step=2,
                  max_iters=200,
                  n_feed_frame=1,
-                 trainable=True, name=None, **kwargs):
-        super(DecoderV1, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(DecoderV1, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         self._prenet_out_units = prenet_out_units
         self._drop_rate = drop_rate
         self.attention_out_units = attention_out_units
@@ -109,7 +110,7 @@ class DecoderV1(tf.layers.Layer):
         self.num_mels = num_mels
         self.outputs_per_step = outputs_per_step
         self.max_iters = max_iters
-        self.stop_token_fc = tf.layers.Dense(1)
+        self.stop_token_fc = tf.layers.Dense(1, dtype=dtype)
         self.n_feed_frame = n_feed_frame
 
     def build(self, _):
@@ -123,9 +124,11 @@ class DecoderV1(tf.layers.Layer):
                          for out_unit in self._prenet_out_units])
 
         batch_size = tf.shape(source)[0]
-        attention_cell = AttentionRNNV1(self.attention_out_units, prenets, source, memory_sequence_length)
-        decoder_cell = DecoderRNNV1(self.decoder_out_units, attention_cell)
-        output_and_done_cell = OutputAndStopTokenWrapper(decoder_cell, self.num_mels * self.outputs_per_step)
+        attention_cell = AttentionRNNV1(self.attention_out_units, prenets, source, memory_sequence_length,
+                                        dtype=self.dtype)
+        decoder_cell = DecoderRNNV1(self.decoder_out_units, attention_cell, dtype=self.dtype)
+        output_and_done_cell = OutputAndStopTokenWrapper(decoder_cell, self.num_mels * self.outputs_per_step,
+                                                         dtype=self.dtype)
 
         decoder_initial_state = output_and_done_cell.zero_state(batch_size, dtype=source.dtype)
 
@@ -141,7 +144,8 @@ class DecoderV1(tf.layers.Layer):
             else StopTokenBasedInferenceHelper(batch_size,
                                                self.num_mels,
                                                self.outputs_per_step,
-                                               n_feed_frame=self.n_feed_frame)
+                                               n_feed_frame=self.n_feed_frame,
+                                               dtype=source.dtype)
 
         ((decoder_outputs, stop_token), _), final_decoder_state, _ = tf.contrib.seq2seq.dynamic_decode(
             BasicDecoder(output_and_done_cell, helper, decoder_initial_state), maximum_iterations=self.max_iters)
@@ -158,17 +162,18 @@ class PostNet(tf.layers.Layer):
                  projection1_out_channels=256,
                  projection2_out_channels=80,
                  num_highway=4,
-                 trainable=True, name=None, **kwargs):
-        super(PostNet, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(PostNet, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         self.cbhg = CBHG(cbhg_out_units,
                          conv_channels,
                          max_filter_width,
                          projection1_out_channels,
                          projection2_out_channels,
                          num_highway,
-                         is_training)
+                         is_training,
+                         dtype=dtype)
 
-        self.linear = tf.layers.Dense(num_freq)
+        self.linear = tf.layers.Dense(num_freq, dtype=dtype)
 
     def build(self, _):
         self.built = True

@@ -80,12 +80,13 @@ class ConcatOutputAndAttentionWrapper(RNNCell):
 
 class OutputAndStopTokenWrapper(RNNCell):
 
-    def __init__(self, cell, out_units):
-        super(OutputAndStopTokenWrapper, self).__init__()
+    def __init__(self, cell, out_units,
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(OutputAndStopTokenWrapper, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         self._out_units = out_units
         self._cell = cell
-        self.out_projection = tf.layers.Dense(out_units)
-        self.stop_token_projectioon = tf.layers.Dense(1)
+        self.out_projection = tf.layers.Dense(out_units, dtype=dtype)
+        self.stop_token_projectioon = tf.layers.Dense(1, dtype=dtype)
 
     @property
     def state_size(self):
@@ -112,8 +113,8 @@ class AttentionRNN(RNNCell):
 
     def __init__(self, cell, prenets: Tuple[PreNet],
                  attention_mechanism,
-                 trainable=True, name=None, **kwargs):
-        super(AttentionRNN, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(AttentionRNN, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         attention_cell = AttentionWrapper(
             DecoderPreNetWrapper(cell, prenets),
             attention_mechanism,

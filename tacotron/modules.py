@@ -45,17 +45,17 @@ from functools import reduce
 
 class Embedding(tf.layers.Layer):
 
-    def __init__(self, num_symbols, embedding_dim, index_offset=0, dtype=None,
-                 trainable=True, name=None, **kwargs):
-        super(Embedding, self).__init__(name=name, trainable=trainable, **kwargs)
+    def __init__(self, num_symbols, embedding_dim, index_offset=0, output_dtype=None,
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(Embedding, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
-        self._dtype = dtype or backend.floatx()
+        self._output_dtype = output_dtype or backend.floatx()
         self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):
-        self._embedding = self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim],
-                                            dtype=self._dtype)
+        self._embedding = tf.cast(self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim]),
+                                  dtype=self._output_dtype)
         self.built = True
 
     def call(self, inputs, **kwargs):
@@ -71,13 +71,13 @@ class PreNet(tf.layers.Layer):
 
     def __init__(self, out_units, is_training, drop_rate=0.5,
                  apply_dropout_on_inference=False,
-                 trainable=True, name=None, **kwargs):
-        super(PreNet, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(PreNet, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
         self.out_units = out_units
         self.drop_rate = drop_rate
         self.is_training = is_training
         self.apply_dropout_on_inference = apply_dropout_on_inference
-        self.dense = tf.layers.Dense(out_units, activation=tf.nn.relu)
+        self.dense = tf.layers.Dense(out_units, activation=tf.nn.relu, dtype=dtype)
 
     def build(self, _):
         self.built = True
@@ -102,15 +102,17 @@ class HighwayNet(tf.layers.Layer):
                  h_bias_initializer=None,
                  t_kernel_initializer=None,
                  t_bias_initializer=tf.constant_initializer(-1.0),
-                 trainable=True, name=None, **kwargs):
-        super(HighwayNet, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(HighwayNet, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
         self.out_units = out_units
         self.H = tf.layers.Dense(out_units, activation=tf.nn.relu, name="H",
                                  kernel_initializer=h_kernel_initializer,
-                                 bias_initializer=h_bias_initializer)
+                                 bias_initializer=h_bias_initializer,
+                                 dtype=dtype)
         self.T = tf.layers.Dense(out_units, activation=tf.nn.sigmoid, name="T",
                                  kernel_initializer=t_kernel_initializer,
-                                 bias_initializer=t_bias_initializer)
+                                 bias_initializer=t_bias_initializer,
+                                 dtype=dtype)
 
     def build(self, input_shape):
         with tf.control_dependencies([tf.assert_equal(self.out_units, input_shape[-1])]):
@@ -130,12 +132,13 @@ class Conv1d(tf.layers.Layer):
     def __init__(self, kernel_size, out_channels, activation, is_training,
                  use_bias=False,
                  drop_rate=0.0,
-                 trainable=True, name=None, **kwargs):
-        super(Conv1d, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(Conv1d, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
         self.is_training = is_training
         self.activation = activation
         self.drop_rate = drop_rate
-        self.conv1d = tf.layers.Conv1D(out_channels, kernel_size, use_bias=use_bias, activation=None, padding="SAME")
+        self.conv1d = tf.layers.Conv1D(out_channels, kernel_size, use_bias=use_bias, activation=None, padding="SAME",
+                                       dtype=dtype)
 
     def build(self, _):
         self.built = True
@@ -158,10 +161,10 @@ class CBHG(tf.layers.Layer):
 
     def __init__(self, out_units, conv_channels, max_filter_width, projection1_out_channels, projection2_out_channels,
                  num_highway, is_training,
-                 trainable=True, name=None, **kwargs):
+                 trainable=True, name=None, dtype=None, **kwargs):
         half_out_units = out_units // 2
         assert out_units % 2 == 0
-        super(CBHG, self).__init__(name=name, trainable=trainable, **kwargs)
+        super(CBHG, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
 
         self.out_units = out_units
 
@@ -170,25 +173,28 @@ class CBHG(tf.layers.Layer):
                    conv_channels,
                    activation=tf.nn.relu,
                    is_training=is_training,
-                   name=f"conv1d_K{kernel_size}")
+                   name=f"conv1d_K{kernel_size}",
+                   dtype=dtype)
             for kernel_size in range(1, max_filter_width + 1)]
-        self.maxpool = tf.layers.MaxPooling1D(pool_size=2, strides=1, padding="SAME")
+        self.maxpool = tf.layers.MaxPooling1D(pool_size=2, strides=1, padding="SAME", dtype=dtype)
 
         self.projection1 = Conv1d(kernel_size=3,
                                   out_channels=projection1_out_channels,
                                   activation=tf.nn.relu,
                                   is_training=is_training,
-                                  name="proj1")
+                                  name="proj1",
+                                  dtype=dtype)
 
         self.projection2 = Conv1d(kernel_size=3,
                                   out_channels=projection2_out_channels,
                                   activation=tf.identity,
                                   is_training=is_training,
-                                  name="proj2")
+                                  name="proj2",
+                                  dtype=dtype)
 
-        self.adjustment_layer = tf.layers.Dense(half_out_units)
+        self.adjustment_layer = tf.layers.Dense(half_out_units, dtype=dtype)
 
-        self.highway_nets = [HighwayNet(half_out_units) for i in range(1, num_highway + 1)]
+        self.highway_nets = [HighwayNet(half_out_units, dtype=dtype) for i in range(1, num_highway + 1)]
 
     def build(self, _):
         self.built = True
@@ -211,8 +217,8 @@ class CBHG(tf.layers.Layer):
 
         # ToDo: use factory from rnn_impl once rnn_impl support bidirectional RNN
         outputs, states = tf.nn.bidirectional_dynamic_rnn(
-            tf.nn.rnn_cell.GRUCell(self.out_units // 2),
-            tf.nn.rnn_cell.GRUCell(self.out_units // 2),
+            tf.nn.rnn_cell.GRUCell(self.out_units // 2, dtype=self.dtype),
+            tf.nn.rnn_cell.GRUCell(self.out_units // 2, dtype=self.dtype),
             highway_output,
             sequence_length=input_lengths,
             dtype=highway_output.dtype)
@@ -227,15 +233,15 @@ class ZoneoutLSTMCell(tf.nn.rnn_cell.RNNCell):
 
     def __init__(self, num_units, is_training, zoneout_factor_cell=0.0, zoneout_factor_output=0.0, state_is_tuple=True,
                  lstm_impl=LSTMImpl.LSTMCell,
-                 trainable=True, name=None, **kwargs):
-        super(ZoneoutLSTMCell, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(ZoneoutLSTMCell, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
         zm = min(zoneout_factor_output, zoneout_factor_cell)
         zs = max(zoneout_factor_output, zoneout_factor_cell)
 
         if zm < 0. or zs > 1.:
             raise ValueError('One/both provided Zoneout factors are not in [0, 1]')
 
-        self._cell = lstm_cell_factory(lstm_impl, num_units)
+        self._cell = lstm_cell_factory(lstm_impl, num_units, dtype=dtype)
         self._zoneout_cell = zoneout_factor_cell
         self._zoneout_outputs = zoneout_factor_output
         self.is_training = is_training
