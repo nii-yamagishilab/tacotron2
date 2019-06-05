@@ -47,7 +47,6 @@ class Embedding(tf.layers.Layer):
 
     def __init__(self, num_symbols, embedding_dim, index_offset=0, output_dtype=None,
                  trainable=True, name=None, dtype=None, **kwargs):
-        assert dtype.is_floating
         self._dtype = dtype or backend.floatx()
         # To ensure self.dtype is float type, set dtype explicitly.
         super(Embedding, self).__init__(name=name, trainable=trainable, dtype=self._dtype, **kwargs)
