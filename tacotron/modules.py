@@ -47,14 +47,18 @@ class Embedding(tf.layers.Layer):
 
     def __init__(self, num_symbols, embedding_dim, index_offset=0, output_dtype=None,
                  trainable=True, name=None, dtype=None, **kwargs):
-        super(Embedding, self).__init__(name=name, trainable=trainable, dtype=dtype, **kwargs)
+        assert dtype.is_floating
+        self._dtype = dtype or backend.floatx()
+        # To ensure self.dtype is float type, set dtype explicitly.
+        super(Embedding, self).__init__(name=name, trainable=trainable, dtype=self._dtype, **kwargs)
         self._num_symbols = num_symbols
         self._embedding_dim = embedding_dim
         self._output_dtype = output_dtype or backend.floatx()
         self.index_offset = tf.convert_to_tensor(index_offset, dtype=tf.int64)
 
     def build(self, _):
-        self._embedding = tf.cast(self.add_variable("embedding", shape=[self._num_symbols, self._embedding_dim]),
+        self._embedding = tf.cast(self.add_weight("embedding", shape=[self._num_symbols, self._embedding_dim],
+                                                  dtype=self._dtype),
                                   dtype=self._output_dtype)
         self.built = True
 
