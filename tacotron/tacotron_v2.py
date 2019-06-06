@@ -22,11 +22,11 @@ Reference: https://github.com/Rayhane-mamah/Tacotron-2/blob/master/tacotron/mode
 
 import tensorflow as tf
 from tensorflow.python.keras import backend
-from tensorflow.contrib.rnn import RNNCell, MultiRNNCell, OutputProjectionWrapper
+from tensorflow.contrib.rnn import RNNCell, MultiRNNCell
 from tensorflow.contrib.seq2seq import BahdanauAttention
 from functools import reduce
 from tacotron.modules import ZoneoutLSTMCell, Conv1d
-from tacotron.rnn_wrappers import AttentionRNN
+from tacotron.rnn_wrappers import AttentionRNN, OutputProjectionWrapper
 from tacotron.rnn_impl import LSTMImpl
 
 
@@ -153,7 +153,8 @@ class DecoderRNNV2(RNNCell):
         super(DecoderRNNV2, self).__init__(name=name, trainable=trainable, **kwargs)
 
         self._cell = MultiRNNCell([
-            OutputProjectionWrapper(attention_cell, out_units),  # ToDo: why OutputProjectionWrapper does not take dtype?
+            # ToDo: Remove OutputProjectionWrapper. This is not necessary.
+            OutputProjectionWrapper(attention_cell, out_units, dtype=dtype),
             ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output, lstm_impl=lstm_impl,
                             dtype=dtype),
             ZoneoutLSTMCell(out_units, is_training, zoneout_factor_cell, zoneout_factor_output, lstm_impl=lstm_impl,
