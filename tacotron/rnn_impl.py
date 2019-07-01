@@ -22,23 +22,23 @@ class GRUImpl:
     all_list = [GRUCell, GRUBlockCellV2]
 
 
-def lstm_cell_factory(lstm_impl, num_units):
+def lstm_cell_factory(lstm_impl, num_units, dtype=None):
     if lstm_impl == LSTMImpl.LSTMCell:
-        cell = tf.nn.rnn_cell.LSTMCell(num_units)
+        cell = tf.nn.rnn_cell.LSTMCell(num_units, dtype=dtype)
         return cell
     elif lstm_impl == LSTMImpl.LSTMBlockCell:
-        cell = tf.contrib.rnn.LSTMBlockCell(num_units)
+        cell = tf.contrib.rnn.LSTMBlockCell(num_units, dtype=dtype)
         return cell
     else:
         raise ValueError(f"Unknown LSTM cell implementation: {lstm_impl}. Supported: {', '.join(LSTMImpl.all_list)}")
 
 
-def gru_cell_factory(gru_impl, num_units):
+def gru_cell_factory(gru_impl, num_units, dtype=None):
     if gru_impl == GRUImpl.GRUCell:
-        cell = tf.nn.rnn_cell.GRUCell(num_units)
+        cell = tf.nn.rnn_cell.GRUCell(num_units, dtype=dtype)
         return cell
     elif gru_impl == GRUImpl.GRUBlockCellV2:
-        cell = tf.contrib.rnn.GRUBlockCellV2(num_units)
+        cell = tf.contrib.rnn.GRUBlockCellV2(num_units, dtype=dtype)
         return cell
     else:
         raise ValueError(f"Unknown GRU cell implementation: {gru_impl}. Supported: {', '.join(GRUImpl.all_list)}")

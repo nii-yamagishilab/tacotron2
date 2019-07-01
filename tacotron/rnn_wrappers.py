@@ -80,12 +80,13 @@ class ConcatOutputAndAttentionWrapper(RNNCell):
 
 class OutputAndStopTokenWrapper(RNNCell):
 
-    def __init__(self, cell, out_units):
-        super(OutputAndStopTokenWrapper, self).__init__()
+    def __init__(self, cell, out_units,
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(OutputAndStopTokenWrapper, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         self._out_units = out_units
         self._cell = cell
-        self.out_projection = tf.layers.Dense(out_units)
-        self.stop_token_projectioon = tf.layers.Dense(1)
+        self.out_projection = tf.layers.Dense(out_units, dtype=dtype)
+        self.stop_token_projectioon = tf.layers.Dense(1, dtype=dtype)
 
     @property
     def state_size(self):
@@ -112,8 +113,8 @@ class AttentionRNN(RNNCell):
 
     def __init__(self, cell, prenets: Tuple[PreNet],
                  attention_mechanism,
-                 trainable=True, name=None, **kwargs):
-        super(AttentionRNN, self).__init__(name=name, trainable=trainable, **kwargs)
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(AttentionRNN, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
         attention_cell = AttentionWrapper(
             DecoderPreNetWrapper(cell, prenets),
             attention_mechanism,
@@ -139,3 +140,45 @@ class AttentionRNN(RNNCell):
 
     def call(self, inputs, state):
         return self._cell(inputs, state)
+
+
+class OutputProjectionWrapper(RNNCell):
+    """ Compatible with tensorflow.contrib.rnn.OutputProjectionWrapper.
+    Support dtype argument as other RNNCells do.
+    """
+
+    def __init__(self, cell, output_size, activation=None, use_bias=True,
+                 trainable=True, name=None, dtype=None, **kwargs):
+        super(OutputProjectionWrapper, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
+        if output_size < 1:
+            raise ValueError("Parameter output_size must be > 0: %d." % output_size)
+        self._cell = cell
+        self._output_size = output_size
+        self._activation = activation
+        self._use_bias = use_bias
+
+    @property
+    def state_size(self):
+        return self._cell.state_size
+
+    @property
+    def output_size(self):
+        return self._output_size
+
+    def zero_state(self, batch_size, dtype):
+        with tf.name_scope(type(self).__name__ + "ZeroState", values=[batch_size]):
+            return self._cell.zero_state(batch_size, dtype)
+
+    def build(self, _):
+        input_dim = self._cell.output_size
+        self._kernel = self.add_weight("kernel", shape=[input_dim, self._output_size])
+        self._bias = self.add_weight("bias", shape=[self._output_size])
+        self.built = True
+
+    def call(self, inputs, state):
+        """Run the cell and output projection on inputs, starting from state."""
+        output, res_state = self._cell(inputs, state)
+        projected = tf.tensordot(output, self._kernel, [[len(output.shape.as_list()) - 1], [0]])
+        projected = tf.nn.bias_add(projected, self._bias) if self._use_bias else projected
+        projected = self._activation(projected) if self._activation else projected
+        return projected, res_state
