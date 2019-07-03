@@ -8,7 +8,7 @@
 import tensorflow as tf
 from tensorflow.contrib.seq2seq import BasicDecoder, BahdanauAttention
 from tacotron.modules import PreNet, CBHG
-from tacotron.rnn_wrappers import OutputAndStopTokenWrapper, AttentionRNN
+from tacotron.rnn_wrappers import OutputAndStopTokenWrapper, AttentionRNN, OutputProjectionWrapper
 from tacotron.helpers import StopTokenBasedInferenceHelper, TrainingHelper, ValidationHelper
 from tacotron.rnn_impl import GRUImpl, gru_cell_factory
 from functools import reduce
@@ -68,7 +68,7 @@ class DecoderRNNV1(tf.nn.rnn_cell.RNNCell):
         super(DecoderRNNV1, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
 
         self._cell = tf.nn.rnn_cell.MultiRNNCell([
-            attention_cell,
+            OutputProjectionWrapper(attention_cell, out_units),
             tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units, dtype=dtype)),
             tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units, dtype=dtype)),
         ], state_is_tuple=True)
