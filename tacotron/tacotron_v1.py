@@ -68,7 +68,6 @@ class DecoderRNNV1(tf.nn.rnn_cell.RNNCell):
         super(DecoderRNNV1, self).__init__(trainable=trainable, name=name, dtype=dtype, **kwargs)
 
         self._cell = tf.nn.rnn_cell.MultiRNNCell([
-            # ToDo: Remove OutputProjectionWrapper. This is not necessary.
             OutputProjectionWrapper(attention_cell, out_units),
             tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units, dtype=dtype)),
             tf.nn.rnn_cell.ResidualWrapper(gru_cell_factory(gru_impl, out_units, dtype=dtype)),
